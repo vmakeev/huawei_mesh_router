@@ -10,7 +10,7 @@
                     "host": "Host",
                     "port": "Port",
                     "username": "Username",
-                    "password": "Login",
+                    "password": "Password,
                     "ssl": "Use SSL",
                     "verify_ssl": "Verify SSL cert",
                     "scan_interval": "Update interval"
