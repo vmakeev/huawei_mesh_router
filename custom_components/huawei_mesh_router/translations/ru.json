@@ -1,0 +1,26 @@
+{
+    "config": {
+        "title": "Роутер Huawei Mesh 3",
+        "step": {
+            "user": {
+                "title": "Роутер Huawei Mesh 3",
+                "description": "Настройка интеграции маршрутизатора Huawei Mesh 3.",
+                "data": {
+                    "name": "Название интеграции",
+                    "host": "Адрес маршрутизатора",
+                    "port": "Порт",
+                    "username": "Имя пользователя",
+                    "password": "Пароль",
+                    "ssl": "Использовать SSL",
+                    "verify_ssl": "Проверять сертификат",
+                    "scan_interval": "Период обновления"
+                }
+            }
+        },
+        "error": {
+            "name_exists": "Имя уже используется.",
+            "auth_general": "Не удалось выполнить аутентификацию.",
+            "auth_invalid_credentials": "Неверное имя пользователя или пароль."
+        }
+    }
+}
