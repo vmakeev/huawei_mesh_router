@@ -1,0 +1,26 @@
+{
+    "config": {
+        "title": "Huawei Mesh 3",
+        "step": {
+            "user": {
+                "title": "Huawei Mesh 3",
+                "description": "Huawei Mesh 3 router setup.",
+                "data": {
+                    "name": "Integration name",
+                    "host": "Host",
+                    "port": "Port",
+                    "username": "Username",
+                    "password": "Password",
+                    "ssl": "Use SSL",
+                    "verify_ssl": "Verify SSL cert",
+                    "scan_interval": "Update interval"
+                }
+            }
+        },
+        "error": {
+            "name_exists": "The name already used.",
+            "auth_general": "Can not authenticate.",
+            "auth_invalid_credentials": "Invalid username or password."
+        }
+    }
+}
