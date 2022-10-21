@@ -81,11 +81,15 @@ def _handle_error_dict(data: Dict) -> None:
         error_code = data["err"]
         error_category = data.get("errorCategory", "unknown")
         _LOGGER.debug("Error data detected in the response: %s %s", error_code, error_category)
+        _LOGGER.debug("Response body with err: %s", data)
         raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
 
     if "errcode" in data and data["errcode"] != 0:
         error_code = data["errcode"]
-        raise ApiCallError("Api call returns unsuccessful result", error_code, None)
+        error_category = "csrf_error" if data.get('csrf') == "Menu.csrf_err" else None
+        _LOGGER.debug("Error code detected in the response: %s %s", error_code, error_category)
+        _LOGGER.debug("Response body with errcode: %s", data)
+        raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
 
 
 # ---------------------------
