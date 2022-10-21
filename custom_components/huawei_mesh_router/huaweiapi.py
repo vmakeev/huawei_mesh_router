@@ -219,6 +219,20 @@ class HuaweiApi:
 
             result = await _get_response_json(response)
             self._handle_csrf_dict(result)
+
+            # temporary hack: trying to handle csrf error without raise exception
+            if result.get('csrf') == "Menu.csrf_err":
+                _LOGGER.debug("csrf failed, trying to send nonce again")
+                response = await self._post_raw("api/system/user_login_nonce",
+                                                {"csrf": self._active_csrf,
+                                                 "data": {"username": self._user, "firstnonce": first_nonce}})
+                if response.status != 200:
+                    _LOGGER.error("Authentication failed: can not send nonce, status is %s", response.status)
+                    raise AuthenticationError("Failed to send nonce", AUTH_FAILURE_GENERAL)
+
+                result = await _get_response_json(response)
+                self._handle_csrf_dict(result)
+
             _handle_error_dict(result)
 
             server_nonce = result['servernonce']
