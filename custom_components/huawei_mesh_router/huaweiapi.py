@@ -80,6 +80,7 @@ def _handle_error_dict(data: Dict) -> None:
     if "err" in data and data["err"] != 0:
         error_code = data["err"]
         error_category = data.get("errorCategory", "unknown")
+        _LOGGER.debug("Error data detected in the response: %s %s", error_code, error_category)
         raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
 
     if "errcode" in data and data["errcode"] != 0:
@@ -132,11 +133,14 @@ class HuaweiApi:
     def _update_csrf(self, csrf_param: str, csrf_token: str) -> None:
         """Update the csrf parameters that needed to make the next request."""
         self._active_csrf = {"csrf_param": csrf_param, "csrf_token": csrf_token}
+        _LOGGER.debug("Csrf updated: param is '%s', token is '%s'", csrf_param, csrf_token)
 
     def _handle_csrf_dict(self, data: Dict) -> None:
         """Process the response dict and update csrf parameters if they exist in the response."""
         if "csrf_param" in data and "csrf_token" in data:
             self._update_csrf(data["csrf_param"], data['csrf_token'])
+        else:
+            _LOGGER.debug("No csrf data found in the response")
 
     async def _ensure_initialized(self) -> None:
         """Ensure that initial authorization was completed successfully."""
@@ -252,6 +256,8 @@ class HuaweiApi:
         except ApiCallError as ex:
             if ex.category == "user_pass_err":
                 raise AuthenticationError("Invalid username or password", AUTH_FAILURE_CREDENTIALS)
+
+            _LOGGER.warning("Authentication failed: %s", {str(ex)})
             raise AuthenticationError("Authentication failed due to api call error", AUTH_FAILURE_GENERAL)
         except Exception as ex:
             _LOGGER.warning("Authentication failed: %s", {str(ex)})
