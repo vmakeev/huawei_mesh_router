@@ -189,7 +189,8 @@ class HuaweiApi:
         """Initialize the client session (if not exists) and clear cookies."""
         _LOGGER.debug("Refresh session called")
         if self._session is None:
-            self._session = aiohttp.ClientSession()
+            jar = aiohttp.CookieJar(unsafe=True)
+            self._session = aiohttp.ClientSession(cookie_jar=jar)
             _LOGGER.debug("Session created")
         self._session.cookie_jar.clear()
         self._active_csrf = None
