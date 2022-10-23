@@ -10,12 +10,21 @@ import re
 
 from random import randbytes
 from aiohttp import ClientResponse
+from aiohttp.abc import AbstractCookieJar
+from yarl import URL
 
 TIMEOUT = 5.0
 _LOGGER = logging.getLogger(__name__)
 
+SESSION_COOKIE_NAME = "SessionID_R3"
+
+APICALL_ERRCAT_CREDENTIALS = "user_pass_err"
+APICALL_ERRCAT_CSRF = "csrf_error"
+APICALL_ERRCAT_REQUEST = "request_error"
+
 AUTH_FAILURE_GENERAL = "auth_general"
 AUTH_FAILURE_CREDENTIALS = "auth_invalid_credentials"
+AUTH_FAILURE_CSRF = "auth_invalid_csrf"
 
 
 class AuthenticationError(Exception):
@@ -80,11 +89,25 @@ def _handle_error_dict(data: Dict) -> None:
     if "err" in data and data["err"] != 0:
         error_code = data["err"]
         error_category = data.get("errorCategory", "unknown")
+        _LOGGER.debug("Error data detected in the response. %s", data)
         raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
 
     if "errcode" in data and data["errcode"] != 0:
         error_code = data["errcode"]
-        raise ApiCallError("Api call returns unsuccessful result", error_code, None)
+        error_category = APICALL_ERRCAT_CSRF if data.get('csrf') == "Menu.csrf_err" else None
+        _LOGGER.debug("Error code detected in the response. %s", data)
+        raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
+
+
+# ---------------------------
+#   _check_has_cookies
+# ---------------------------
+def _check_has_cookies(cookie_jar: AbstractCookieJar, url: URL) -> None:
+    host_cookies = cookie_jar.filter_cookies(url)
+    if not host_cookies.get(SESSION_COOKIE_NAME):
+        _LOGGER.warning("Session cookies not found, url is '%s'.", url)
+    else:
+        _LOGGER.debug("Session cookies stored")
 
 
 # ---------------------------
@@ -132,11 +155,14 @@ class HuaweiApi:
     def _update_csrf(self, csrf_param: str, csrf_token: str) -> None:
         """Update the csrf parameters that needed to make the next request."""
         self._active_csrf = {"csrf_param": csrf_param, "csrf_token": csrf_token}
+        _LOGGER.debug("Csrf updated: param is '%s', token is '%s'", csrf_param, csrf_token)
 
     def _handle_csrf_dict(self, data: Dict) -> None:
         """Process the response dict and update csrf parameters if they exist in the response."""
         if "csrf_param" in data and "csrf_token" in data:
             self._update_csrf(data["csrf_param"], data['csrf_token'])
+        else:
+            _LOGGER.debug("No csrf data found in the response")
 
     async def _ensure_initialized(self) -> None:
         """Ensure that initial authorization was completed successfully."""
@@ -156,7 +182,8 @@ class HuaweiApi:
             return response
         except Exception as ex:
             _LOGGER.error("GET %s failed: %s", path, str(ex))
-            raise ApiCallError(f"Can not perform GET request at {path} cause of {str(ex)}", None, "request_error")
+            raise ApiCallError(f"Can not perform GET request at {path} cause of {str(ex)}",
+                               None, APICALL_ERRCAT_REQUEST)
 
     async def _post_raw(self, path: str, data: Dict) -> ClientResponse:
         """Perform POST request to the specified relative URL with specified body and return raw ClientResponse."""
@@ -170,13 +197,16 @@ class HuaweiApi:
             return response
         except Exception as ex:
             _LOGGER.error("POST %s failed: %s", path, str(ex))
-            raise ApiCallError(f'Can not perform POST request at {path} cause of {str(ex)}', None, "request_error")
+            raise ApiCallError(f'Can not perform POST request at {path} cause of {str(ex)}',
+                               None, APICALL_ERRCAT_REQUEST)
 
     def _refresh_session(self) -> None:
         """Initialize the client session (if not exists) and clear cookies."""
         _LOGGER.debug("Refresh session called")
         if self._session is None:
-            self._session = aiohttp.ClientSession()
+            """Unsafe cookies for IP addresses instead of domain names"""
+            jar = aiohttp.CookieJar(unsafe=True)
+            self._session = aiohttp.ClientSession(cookie_jar=jar)
             _LOGGER.debug("Session created")
         self._session.cookie_jar.clear()
         self._active_csrf = None
@@ -198,6 +228,7 @@ class HuaweiApi:
             csrf_param = re.search('<meta name="csrf_param" content="(.+)"/>', result).group(1)
             csrf_token = re.search('<meta name="csrf_token" content="(.+)"/>', result).group(1)
             self._update_csrf(csrf_param, csrf_token)
+            _check_has_cookies(self._session.cookie_jar, URL(self._base_url))
 
             first_nonce = randbytes(32).hex()
 
@@ -250,8 +281,12 @@ class HuaweiApi:
 
             _LOGGER.debug("Authentication success")
         except ApiCallError as ex:
-            if ex.category == "user_pass_err":
+            if ex.category == APICALL_ERRCAT_CREDENTIALS:
                 raise AuthenticationError("Invalid username or password", AUTH_FAILURE_CREDENTIALS)
+            if ex.category == APICALL_ERRCAT_CSRF:
+                raise AuthenticationError("CSRF error, try again", AUTH_FAILURE_CSRF)
+
+            _LOGGER.warning("Authentication failed: %s", {str(ex)})
             raise AuthenticationError("Authentication failed due to api call error", AUTH_FAILURE_GENERAL)
         except Exception as ex:
             _LOGGER.warning("Authentication failed: %s", {str(ex)})

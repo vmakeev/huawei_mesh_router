@@ -64,7 +64,6 @@ class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
-        _LOGGER.debug("async_step_user: input is %s", user_input)
         errors = {}
         if user_input is not None:
             # Check if instance with this name already exists
@@ -84,7 +83,8 @@ class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 await api.authenticate()
             except AuthenticationError as aex:
                 errors["base"] = aex.reason_code or "auth_general"
-            except Exception:
+            except Exception as ex:
+                _LOGGER.warning("Setup failed: %s", {str(ex)})
                 errors["base"] = "auth_general"
             finally:
                 await api.disconnect()
