@@ -20,6 +20,7 @@
         "error": {
             "name_exists": "The name already used.",
             "auth_general": "Can not authenticate.",
+            "auth_invalid_csrf": "CSRF error, try again.",
             "auth_invalid_credentials": "Invalid username or password."
         }
     }
