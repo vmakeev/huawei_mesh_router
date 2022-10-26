@@ -12,7 +12,6 @@ from .const import (
     SWITCHES_NFC,
     SWITCHES_WIFI_80211R,
     SWITCHES_WIFI_TWT,
-    ATTR_MANUFACTURER,
 )
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 from homeassistant.core import callback, HomeAssistant

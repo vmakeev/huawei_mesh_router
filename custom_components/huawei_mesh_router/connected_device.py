@@ -1,4 +1,14 @@
 from typing import Dict
+from homeassistant.backports.enum import StrEnum
+
+
+# ---------------------------
+#   HuaweiInterfaceType
+# ---------------------------
+class HuaweiInterfaceType(StrEnum):
+    INTERFACE_5GHZ = "5GHz"
+    INTERFACE_2_4GHZ = "2.4GHz"
+    INTERFACE_LAN = "LAN"
 
 
 # ---------------------------
@@ -49,9 +59,19 @@ class ConnectedDevice:
         return self._mac
 
     @property
+    def interface_type(self) -> HuaweiInterfaceType | None:
+        """Return the connection interface type."""
+        return self._data.get("interface_type")
+
+    @property
     def is_active(self) -> bool:
         """Return true when device is connected to mesh."""
         return self._is_active
+
+    @property
+    def is_guest(self) -> bool | None:
+        """Return true when device is hilink mesh router."""
+        return self._data.get("is_guest")
 
     @property
     def is_hilink(self) -> bool | None:
