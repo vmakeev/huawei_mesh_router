@@ -14,7 +14,7 @@ from .connected_device import ConnectedDevice
 from .const import DOMAIN
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
-FILTER_ATTRS = ("ip_address",)
+FILTER_ATTRS = ("ip_address", "connected_via_id", "vendor_class_id")
 _LOGGER = logging.getLogger(__name__)
 
 

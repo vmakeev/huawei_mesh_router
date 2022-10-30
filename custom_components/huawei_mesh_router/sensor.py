@@ -1,11 +1,12 @@
 """Support for additional sensors."""
 import logging
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import callback, HomeAssistant
+from homeassistant.helpers import entity_registry
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -17,18 +18,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, CONNECTED_VIA_ID_PRIMARY
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 from .connected_device import ConnectedDevice, HuaweiInterfaceType
-
-ATTR_GUEST_CLIENTS = "guest_clients"
-ATTR_HILINK_CLIENTS = "hilink_clients"
 
 UNITS_CLIENTS = "clients"
 
 _LOGGER = logging.getLogger(__name__)
-
-INTERFACES_WLAN = [HuaweiInterfaceType.INTERFACE_5GHZ, HuaweiInterfaceType.INTERFACE_2_4GHZ]
 
 
 # ---------------------------
@@ -43,31 +39,28 @@ class HuaweiClientsSensorEntityDescription(SensorEntityDescription):
 
 
 # ---------------------------
-#   HuaweiInterfaceStatsSensorEntityDescription
+#   _get_mesh_routers
 # ---------------------------
-@dataclass
-class HuaweiInterfaceStatsSensorEntityDescription(HuaweiClientsSensorEntityDescription):
-    """A class that describes interface stats sensor entities."""
-    interface_type: HuaweiInterfaceType = None
+def _get_mesh_routers(devices: [ConnectedDevice]) -> dict[str, ConnectedDevice]:
+    result = {}
+    for device in devices:
+        if device.is_active and device.is_router:
+            result[device.mac] = device
+    return result
 
 
-INTERFACE_STATS_DESCRIPTIONS: List[HuaweiInterfaceStatsSensorEntityDescription] = [
-    HuaweiInterfaceStatsSensorEntityDescription(
-        key="5_ghz_clients",
-        interface_type=HuaweiInterfaceType.INTERFACE_5GHZ,
-        icon="mdi:access-point",
-    ),
-    HuaweiInterfaceStatsSensorEntityDescription(
-        key="2_4_ghz_clients",
-        interface_type=HuaweiInterfaceType.INTERFACE_2_4GHZ,
-        icon="mdi:access-point",
-    ),
-    HuaweiInterfaceStatsSensorEntityDescription(
-        key="lan_clients",
-        interface_type=HuaweiInterfaceType.INTERFACE_LAN,
-        icon="mdi:lan",
-    ),
-]
+# ---------------------------
+#   _generate_clients_sensor_name
+# ---------------------------
+def _generate_clients_sensor_name(coordinator: HuaweiControllerDataUpdateCoordinator, source_name: str) -> str:
+    return f"{coordinator.name} clients ({source_name})"
+
+
+# ---------------------------
+#   _generate_sensor_unique_id
+# ---------------------------
+def _generate_sensor_unique_id(coordinator: HuaweiControllerDataUpdateCoordinator, sensor_name: str) -> str:
+    return f"{sensor_name}_{coordinator.router_info.serial_number}"
 
 
 # ---------------------------
@@ -82,36 +75,107 @@ async def async_setup_entry(
     coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     sensors = [
-        GuestDevicesStatsSensor(coordinator),
-        HiLinkDevicesStatsSensor(coordinator),
-        WirelessDevicesStatsSensor(coordinator),
-        TotalDevicesStatsSensor(coordinator)
+        HuaweiConnectedDevicesSensor(coordinator,
+                                     HuaweiClientsSensorEntityDescription(
+                                         key="total",
+                                         icon="mdi:account-multiple",
+                                         name=_generate_clients_sensor_name(coordinator, "total")
+                                     ),
+                                     lambda device: device.is_active),
+        HuaweiConnectedDevicesSensor(coordinator,
+                                     HuaweiClientsSensorEntityDescription(
+                                         key="primary",
+                                         icon="mdi:router-wireless",
+                                         name=_generate_clients_sensor_name(coordinator, "primary router")
+                                     ),
+                                     lambda device:
+                                     device.is_active and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY)
     ]
-
-    for description in INTERFACE_STATS_DESCRIPTIONS:
-        sensors.append(
-            HuaweiInterfaceStatsSensor(coordinator, description)
-        )
 
     async_add_entities(sensors)
 
+    existing_routers: dict[str, ConnectedDevice] = {}
+
+    @callback
+    def coordinator_updated():
+        """Update the status of the device."""
+        update_items(coordinator, async_add_entities, existing_routers)
+
+    config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
+    coordinator_updated()
+
 
 # ---------------------------
-#   ConnectedDevicesStatsSensor
+#   update_items
 # ---------------------------
-class HuaweiConnectedDevicesStatsSensor(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity, ABC):
+@callback
+def update_items(coordinator: HuaweiControllerDataUpdateCoordinator,
+                 async_add_entities,
+                 existing_routers: dict[str, ConnectedDevice]):
+    """Update connected routers"""
+    new_sensors = []
+
+    actual_routers: dict[str, ConnectedDevice] = _get_mesh_routers(coordinator.connected_devices.values())
+
+    for device_id, router in actual_routers.items():
+        if device_id in existing_routers:
+            continue
+
+        entity = HuaweiConnectedDevicesSensor(coordinator,
+                                              HuaweiClientsSensorEntityDescription(
+                                                  key=device_id,
+                                                  icon="mdi:router-wireless",
+                                                  name=_generate_clients_sensor_name(coordinator, router.name)
+                                              ),
+                                              lambda device, via_id=device_id:
+                                              device.is_active and device.connected_via_id == via_id)
+        existing_routers[device_id] = router
+        new_sensors.append(entity)
+
+    if new_sensors:
+        async_add_entities(new_sensors)
+
+    """remove not available routers"""
+    unavailable_routers = {}
+    for device_id, existing_router in existing_routers.items():
+        if device_id not in actual_routers:
+            unavailable_routers[device_id] = existing_router
+
+    if unavailable_routers:
+        er = entity_registry.async_get(coordinator.hass)
+        for device_id, unavailable_router in unavailable_routers.items():
+            existing_routers.pop(device_id, None)
+
+            sensor_name = _generate_clients_sensor_name(coordinator, unavailable_router.name)
+            unique_id = _generate_sensor_unique_id(coordinator, sensor_name)
+            entity_id = er.async_get_entity_id(Platform.SENSOR, DOMAIN, unique_id)
+            if entity_id:
+                er.async_remove(entity_id)
+            else:
+                _LOGGER.warning("Can not remove unavailable router '%s': entity id not found.", unique_id)
+
+
+# ---------------------------
+#   HuaweiRouterConnectedDevicesSensor
+# ---------------------------
+class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity):
 
     def __init__(
             self,
             coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiClientsSensorEntityDescription
+            description: HuaweiClientsSensorEntityDescription,
+            devices_predicate: Any
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
 
         self._actual_value: int = 0
+        self._attrs: dict[str, Any] = {}
+        self._devices_predicate = devices_predicate
 
+        self._attr_name = description.name
         self._attr_device_info = coordinator.device_info
+        self._attr_unique_id = _generate_sensor_unique_id(coordinator, description.name)
         self.entity_description = description
 
     async def async_added_to_hass(self) -> None:
@@ -124,159 +188,39 @@ class HuaweiConnectedDevicesStatsSensor(CoordinatorEntity[HuaweiControllerDataUp
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
 
-        self._actual_value = sum(
-            1 for _ in filter(
-                lambda device: self._device_predicate(device),
-                self.coordinator.connected_devices.values()
-            )
-        )
+        total_clients: int = 0
+        guest_clients: int = 0
+        wireless_clients: int = 0
+        lan_clients: int = 0
+        wifi_2_4_clients: int = 0
+        wifi_5_clients: int = 0
 
-        super()._handle_coordinator_update()
+        for device in self.coordinator.connected_devices.values():
 
-    @abstractmethod
-    def _device_predicate(self, device: ConnectedDevice) -> bool:
-        """Matching devices filter."""
-        raise NotImplementedError()
+            if not self._devices_predicate(device):
+                continue
 
-    @property
-    def native_value(self) -> StateType | int:
-        """Return the state."""
-        return self._actual_value
+            total_clients += 1
 
+            if device.is_guest:
+                guest_clients += 1
 
-# ---------------------------
-#   GuestDevicesStatsSensor
-# ---------------------------
-class GuestDevicesStatsSensor(HuaweiConnectedDevicesStatsSensor):
+            if device.interface_type == HuaweiInterfaceType.INTERFACE_LAN:
+                lan_clients += 1
+            elif device.interface_type == HuaweiInterfaceType.INTERFACE_2_4GHZ:
+                wireless_clients += 1
+                wifi_2_4_clients += 1
+            elif device.interface_type == HuaweiInterfaceType.INTERFACE_5GHZ:
+                wireless_clients += 1
+                wifi_5_clients += 1
 
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
-        """Initialize."""
-        description = HuaweiClientsSensorEntityDescription(
-            key="guest_clients",
-            icon="mdi:account-question",
-            name="Guest clients",
-        )
+        self._actual_value = total_clients
 
-        super().__init__(coordinator, description)
-
-        self._attr_name = f"{self.coordinator.name} guest clients"
-        self._attr_unique_id = f"guest_clients_{self.coordinator.router_info.serial_number}"
-
-    def _device_predicate(self, device: ConnectedDevice) -> bool:
-        """Matching devices filter."""
-        return device.is_active and device.is_guest
-
-
-# ---------------------------
-#   WirelessDevicesStatsSensor
-# ---------------------------
-class WirelessDevicesStatsSensor(HuaweiConnectedDevicesStatsSensor):
-
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
-        """Initialize."""
-        description = HuaweiClientsSensorEntityDescription(
-            key="wireless_clients",
-            icon="mdi:wifi",
-            name="Wireless clients",
-        )
-
-        super().__init__(coordinator, description)
-
-        self._attr_name = f"{self.coordinator.name} wireless clients"
-        self._attr_unique_id = f"wireless_clients_{self.coordinator.router_info.serial_number}"
-
-    def _device_predicate(self, device: ConnectedDevice) -> bool:
-        """Matching devices filter."""
-        return device.is_active and device.interface_type in INTERFACES_WLAN
-
-
-# ---------------------------
-#   TotalDevicesStatsSensor
-# ---------------------------
-class TotalDevicesStatsSensor(HuaweiConnectedDevicesStatsSensor):
-
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
-        """Initialize."""
-        description = HuaweiClientsSensorEntityDescription(
-            key="total_clients",
-            icon="mdi:account-multiple",
-            name="Total clients",
-        )
-
-        super().__init__(coordinator, description)
-
-        self._attr_name = f"{self.coordinator.name} total clients"
-        self._attr_unique_id = f"total_clients_{self.coordinator.router_info.serial_number}"
-
-    def _device_predicate(self, device: ConnectedDevice) -> bool:
-        """Matching devices filter."""
-        return device.is_active
-
-
-# ---------------------------
-#   HiLinkDevicesStatsSensor
-# ---------------------------
-class HiLinkDevicesStatsSensor(HuaweiConnectedDevicesStatsSensor):
-
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
-        """Initialize."""
-        description = HuaweiClientsSensorEntityDescription(
-            key="hilink_clients",
-            icon="mdi:access-point-plus",
-            name="HiLink clients",
-        )
-
-        super().__init__(coordinator, description)
-
-        self._attr_name = f"{self.coordinator.name} hilink clients"
-        self._attr_unique_id = f"hilink_clients_{self.coordinator.router_info.serial_number}"
-
-    def _device_predicate(self, device: ConnectedDevice) -> bool:
-        """Matching devices filter."""
-        return device.is_active and device.is_hilink
-
-
-# ---------------------------
-#   InterfaceStatsSensor
-# ---------------------------
-class HuaweiInterfaceStatsSensor(HuaweiConnectedDevicesStatsSensor):
-
-    def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiInterfaceStatsSensorEntityDescription
-    ) -> None:
-        """Initialize."""
-        super().__init__(coordinator, description)
-
-        self._interface_type: HuaweiInterfaceType = description.interface_type
-
-        self._attr_name = f"{self.coordinator.name} interface stats {self._interface_type}"
-        self._attr_unique_id = f"interface_stats_" \
-                               f"{self._interface_type.lower()}_{self.coordinator.router_info.serial_number}"
-        self._attrs: dict[str, Any] = {}
-
-    def _device_predicate(self, device: ConnectedDevice) -> bool:
-        """Matching devices filter."""
-        return device.is_active and device.interface_type == self._interface_type
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-
-        self._attrs[ATTR_GUEST_CLIENTS] = sum(
-            1 for _ in filter(
-                lambda device: self._device_predicate(device) and device.is_guest,
-                self.coordinator.connected_devices.values()
-            )
-        )
-
-        self._attrs[ATTR_HILINK_CLIENTS] = sum(
-            1 for _ in filter(
-                lambda device: self._device_predicate(device) and device.is_hilink,
-                self.coordinator.connected_devices.values()
-            )
-        )
+        self._attrs["guest_clients"] = guest_clients
+        self._attrs["wireless_clients"] = wireless_clients
+        self._attrs["lan_clients"] = lan_clients
+        self._attrs["wifi_2_4_clients"] = wifi_2_4_clients
+        self._attrs["wifi_5_clients"] = wifi_5_clients
 
         super()._handle_coordinator_update()
 

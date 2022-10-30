@@ -19,6 +19,7 @@ from .const import (
     SWITCHES_NFC,
     SWITCHES_WIFI_80211R,
     SWITCHES_WIFI_TWT,
+    CONNECTED_VIA_ID_PRIMARY
 )
 
 from homeassistant.const import (
@@ -169,13 +170,16 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         devices_to_routers = {}
         for mesh_router in mesh_routers:
-            router_name = next((item.get('ActualName') for item in devices_data
-                                if item.get('MACAddress') == mesh_router.get('MACAddress')),
-                               mesh_router.get('MACAddress'))
+            router = next((item for item in devices_data
+                           if item.get('MACAddress') == mesh_router.get('MACAddress')),
+                          {"name": mesh_router.get('MACAddress'), "id": mesh_router.get('MACAddress')})
             if 'ConnectedDevices' in mesh_router:
                 for mesh_connected_device in mesh_router.get('ConnectedDevices', []):
                     if 'MACAddress' in mesh_connected_device:
-                        devices_to_routers[mesh_connected_device['MACAddress']] = router_name
+                        devices_to_routers[mesh_connected_device['MACAddress']] = {
+                            "name": router.get('ActualName'),
+                            "id": router.get('MACAddress')
+                        }
 
         for device_data in devices_data:
             mac: str = device_data['MACAddress']
@@ -190,14 +194,20 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                 self._connected_devices[device.mac] = device
 
             if is_active:
-                connected_via = devices_to_routers.get(mac, self.name or 'Primary router')
+                connected_via = devices_to_routers.get(mac,
+                                                       {
+                                                           "name": self.name or 'Primary router',
+                                                           "id": CONNECTED_VIA_ID_PRIMARY
+                                                       })
                 device.update_device_data(name, host_name, True,
-                                          connected_via=connected_via,
+                                          connected_via=connected_via.get("name"),
                                           ip_address=device_data.get('IPAddress'),
                                           interface_type=device_data.get('InterfaceType'),
                                           rssi=device_data.get('rssi'),
                                           is_guest=device_data.get('IsGuest'),
-                                          is_hilink=device_data.get('HiLinkDevice')
+                                          is_hilink=device_data.get('HiLinkDevice'),
+                                          vendor_class_id=device_data.get('VendorClassID'),
+                                          connected_via_id=connected_via.get("id")
                                           )
             else:
                 device.update_device_data(name, host_name, False)

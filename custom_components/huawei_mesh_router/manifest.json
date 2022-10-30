@@ -4,6 +4,6 @@
   "documentation": "https://github.com/vmakeev/huawei_mesh_router",
   "codeowners": ["@vmakeev"],
   "iot_class": "local_polling",
-  "version": "0.7.0",
+  "version": "0.7.2",
   "config_flow": true
 }
