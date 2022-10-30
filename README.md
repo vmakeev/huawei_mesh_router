@@ -58,7 +58,7 @@ My phone: Rssi **30** *via* **Kitchen router** (**5GHz**)
 
 ### Number of connected devices
 
-The component provides the ability to obtain the number of connected devices both to the entire mesh network and to specific routers using sensors. named 
+The component provides the ability to obtain the number of connected devices both to the entire mesh network and to specific routers using sensors.
 
 There are two sensors that are always present:
 * `sensor.<integration_name>_clients_total` - total number of devices connected to the mesh network
