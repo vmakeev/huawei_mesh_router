@@ -23,7 +23,7 @@ class ConnectedDevice:
                  host_name: str,
                  mac: str,
                  is_active: bool,
-                 **kwargs: Dict):
+                 **kwargs: Dict) -> None:
         self._name: str = name
         self._host_name: str = host_name
         self._mac: str = mac
@@ -40,10 +40,10 @@ class ConnectedDevice:
         self._is_active: bool = is_active
         self._data: Dict = kwargs or {}
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Device {self._name} ({self._host_name}), {'' if self._is_active else 'not '}active, data: {self._data}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     @property

@@ -29,7 +29,7 @@ async def async_setup(hass, _config):
 # ---------------------------
 #   async_setup_entry
 # ---------------------------
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Huawei Router as config entry."""
     coordinator = HuaweiControllerDataUpdateCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()

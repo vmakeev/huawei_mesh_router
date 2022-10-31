@@ -76,5 +76,5 @@ Each sensor exposes the following attributes:
 | `guest_clients`    | Number of devices connected to the guest network |
 | `wireless_clients` | Number of devices connected wirelessly           |
 | `lan_clients`      | Number of devices connected by cable             |
-| `wifi_2_4_clients` | Number of devices connected to WiFi 2.4 GHz      |
-| `wifi_5_clients`   | Number of devices connected to WiFi 5 GHz        |
+| `wifi_2_4_clients` | Number of devices connected to Wi-Fi 2.4 GHz     |
+| `wifi_5_clients`   | Number of devices connected to Wi-Fi 5 GHz       |

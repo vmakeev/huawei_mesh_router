@@ -2,7 +2,7 @@
 import logging
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import callback, HomeAssistant
@@ -97,7 +97,7 @@ async def async_setup_entry(
     existing_routers: dict[str, ConnectedDevice] = {}
 
     @callback
-    def coordinator_updated():
+    def coordinator_updated() -> None:
         """Update the status of the device."""
         update_items(coordinator, async_add_entities, existing_routers)
 
@@ -111,7 +111,7 @@ async def async_setup_entry(
 @callback
 def update_items(coordinator: HuaweiControllerDataUpdateCoordinator,
                  async_add_entities,
-                 existing_routers: dict[str, ConnectedDevice]):
+                 existing_routers: dict[str, ConnectedDevice]) -> None:
     """Update connected routers"""
     new_sensors = []
 
@@ -164,14 +164,14 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
             self,
             coordinator: HuaweiControllerDataUpdateCoordinator,
             description: HuaweiClientsSensorEntityDescription,
-            devices_predicate: Any
+            devices_predicate: Callable[[ConnectedDevice], bool]
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
 
         self._actual_value: int = 0
         self._attrs: dict[str, Any] = {}
-        self._devices_predicate = devices_predicate
+        self._devices_predicate: Callable[[ConnectedDevice], bool] = devices_predicate
 
         self._attr_name = description.name
         self._attr_device_info = coordinator.device_info

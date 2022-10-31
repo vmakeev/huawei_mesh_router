@@ -22,8 +22,8 @@ _LOGGER = logging.getLogger(__name__)
 # ---------------------------
 #   async_setup_entry
 # ---------------------------
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities):
-    """Set up switches for Mikrotik Router component."""
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities) -> None:
+    """Set up switches for Huawei Router component."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     switches = [
@@ -38,10 +38,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 #   HuaweiSwitch
 # ---------------------------
 class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SwitchEntity, ABC):
-
     _update_url: str
 
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry, switch_name: str):
+    def __init__(
+            self,
+            coordinator: HuaweiControllerDataUpdateCoordinator,
+            config_entry: ConfigEntry,
+            switch_name: str
+    ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self._switch_name: str = switch_name
@@ -107,7 +111,7 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
 # ---------------------------
 class HuaweiNfcSwitch(HuaweiSwitch):
 
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry):
+    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry) -> None:
         """Initialize."""
         super().__init__(coordinator, config_entry, SWITCHES_NFC)
 
@@ -126,7 +130,7 @@ class HuaweiNfcSwitch(HuaweiSwitch):
 # ---------------------------
 class HuaweiWifi80211RSwitch(HuaweiSwitch):
 
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry):
+    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry) -> None:
         """Initialize."""
         super().__init__(coordinator, config_entry, SWITCHES_WIFI_80211R)
         self._attr_name = f"{self.coordinator.name} WiFi 802.11r"
@@ -148,7 +152,7 @@ class HuaweiWifi80211RSwitch(HuaweiSwitch):
 # ---------------------------
 class HuaweiWifiTWTSwitch(HuaweiSwitch):
 
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry):
+    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, config_entry: ConfigEntry) -> None:
         """Initialize."""
         super().__init__(coordinator, config_entry, SWITCHES_WIFI_TWT)
 
