@@ -67,7 +67,7 @@ class ConnectedDevice:
         return self._mac
 
     @property
-    def connected_via_id(self) -> str:
+    def connected_via_id(self) -> str | None:
         """Return the id of parent device."""
         return self._data.get("connected_via_id")
 
@@ -82,17 +82,17 @@ class ConnectedDevice:
         return self._is_active
 
     @property
-    def is_guest(self) -> bool | None:
+    def is_guest(self) -> bool:
         """Return true when device is guest."""
-        return self._data.get("is_guest")
+        return self._data.get("is_guest", False)
 
     @property
-    def is_hilink(self) -> bool | None:
+    def is_hilink(self) -> bool:
         """Return true when device is hilink."""
-        return self._data.get("is_hilink")
+        return self._data.get("is_hilink", False)
 
     @property
-    def is_router(self) -> bool | None:
+    def is_router(self) -> bool:
         """Return true when device is hilink router."""
         return self.is_hilink and self._data.get("vendor_class_id") == VENDOR_CLASS_ID_ROUTER
 

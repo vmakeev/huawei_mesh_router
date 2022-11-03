@@ -190,6 +190,7 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
 
         total_clients: int = 0
         guest_clients: int = 0
+        hilink_clients: int = 0
         wireless_clients: int = 0
         lan_clients: int = 0
         wifi_2_4_clients: int = 0
@@ -204,6 +205,8 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
 
             if device.is_guest:
                 guest_clients += 1
+            if device.is_hilink:
+                hilink_clients += 1
 
             if device.interface_type == HuaweiInterfaceType.INTERFACE_LAN:
                 lan_clients += 1
@@ -217,6 +220,7 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
         self._actual_value = total_clients
 
         self._attrs["guest_clients"] = guest_clients
+        self._attrs["hilink_clients"] = hilink_clients
         self._attrs["wireless_clients"] = wireless_clients
         self._attrs["lan_clients"] = lan_clients
         self._attrs["wifi_2_4_clients"] = wifi_2_4_clients

@@ -27,18 +27,18 @@ By default, Huawei WiFi Mesh 3 routers use the username `admin`, although it is 
 
 Each tracked device exposes the following attributes:
 
-|    Attribute     |    Description            | Only when connected |
-|------------------|---------------------------|---------------------|
-| `source_type`    | Always `router`           | No                  |
-| `ip`             | Device IP address         | Yes                 |
-| `mac`            | MAC address of the device | No                  |
-| `hostname`       | Device name according to the device itself | No |
+|    Attribute     |                  Description                 | Only when connected |
+|------------------|----------------------------------------------|---------------------|
+| `source_type`    | Always `router`                              | No                  |
+| `ip`             | Device IP address                            | Yes                 |
+| `mac`            | MAC address of the device                    | No                  |
+| `hostname`       | Device name according to the device itself   | No                  |
 | `connected_via`  | The name of the router through which the connection was made. For the primary router - `Huawei Mesh 3` (or your configuration name) | Yes |
-| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`) | Yes |
-| `rssi`           | Signal strength for wireless connections | Yes  |
-| `is_guest`       | Is the device connected to the guest network | Yes |
-| `is_hilink`      | Is the device connected via HiLink (usually other routers) | Yes |
-| `friendly_name`  | Device name provided by the router | No         |
+| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`) | Yes          |
+| `rssi`           | Signal strength for wireless connections     | Yes                 |
+| `is_guest`       | Is the device connected to the guest network | Yes                 |
+| `is_hilink`      | Is the device connected via HiLink (usually other routers) | Yes   |
+| `friendly_name`  | Device name provided by the router           | No                  |
 
 Tracked device names, including routers, can be changed in [your mesh control interface](http://192.168.3.1/html/index.html#/devicecontrol), after which the component will update them in Home Assistant
 
@@ -71,9 +71,10 @@ _Note: when additional routers are disconnected from the network, their personal
 
 Each sensor exposes the following attributes:
 
-|    Attribute       |    Description                                   |
+|     Attribute      |                  Description                     |
 |--------------------|--------------------------------------------------|
 | `guest_clients`    | Number of devices connected to the guest network |
+| `hilink_clients`   | Number of devices connected via HiLink           |
 | `wireless_clients` | Number of devices connected wirelessly           |
 | `lan_clients`      | Number of devices connected by cable             |
 | `wifi_2_4_clients` | Number of devices connected to Wi-Fi 2.4 GHz     |
