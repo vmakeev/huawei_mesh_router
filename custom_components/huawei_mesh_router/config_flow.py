@@ -1,4 +1,4 @@
-"""Config flow to configure Mikrotik Router."""
+"""Config flow to configure Huawei Mesh Router."""
 
 import logging
 

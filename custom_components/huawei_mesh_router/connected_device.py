@@ -1,4 +1,16 @@
 from typing import Dict
+from homeassistant.backports.enum import StrEnum
+
+from .const import VENDOR_CLASS_ID_ROUTER
+
+
+# ---------------------------
+#   HuaweiInterfaceType
+# ---------------------------
+class HuaweiInterfaceType(StrEnum):
+    INTERFACE_5GHZ = "5GHz"
+    INTERFACE_2_4GHZ = "2.4GHz"
+    INTERFACE_LAN = "LAN"
 
 
 # ---------------------------
@@ -11,7 +23,7 @@ class ConnectedDevice:
                  host_name: str,
                  mac: str,
                  is_active: bool,
-                 **kwargs: Dict):
+                 **kwargs: Dict) -> None:
         self._name: str = name
         self._host_name: str = host_name
         self._mac: str = mac
@@ -27,6 +39,12 @@ class ConnectedDevice:
         self._host_name: str = host_name
         self._is_active: bool = is_active
         self._data: Dict = kwargs or {}
+
+    def __str__(self) -> str:
+        return f"Device {self._name} ({self._host_name}), {'' if self._is_active else 'not '}active, data: {self._data}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     @property
     def name(self) -> str:
@@ -49,14 +67,34 @@ class ConnectedDevice:
         return self._mac
 
     @property
+    def connected_via_id(self) -> str | None:
+        """Return the id of parent device."""
+        return self._data.get("connected_via_id")
+
+    @property
+    def interface_type(self) -> HuaweiInterfaceType | None:
+        """Return the connection interface type."""
+        return self._data.get("interface_type")
+
+    @property
     def is_active(self) -> bool:
         """Return true when device is connected to mesh."""
         return self._is_active
 
     @property
-    def is_hilink(self) -> bool | None:
-        """Return true when device is hilink mesh router."""
-        return self._data.get("is_hilink")
+    def is_guest(self) -> bool:
+        """Return true when device is guest."""
+        return self._data.get("is_guest", False)
+
+    @property
+    def is_hilink(self) -> bool:
+        """Return true when device is hilink."""
+        return self._data.get("is_hilink", False)
+
+    @property
+    def is_router(self) -> bool:
+        """Return true when device is hilink router."""
+        return self.is_hilink and self._data.get("vendor_class_id") == VENDOR_CLASS_ID_ROUTER
 
     @property
     def all_attrs(self) -> Dict:

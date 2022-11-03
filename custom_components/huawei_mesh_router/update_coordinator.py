@@ -2,7 +2,7 @@
 
 import logging
 from datetime import timedelta
-from typing import Dict
+from typing import Any, cast, Iterator, List
 
 from aiohttp import ClientResponse
 
@@ -19,6 +19,7 @@ from .const import (
     SWITCHES_NFC,
     SWITCHES_WIFI_80211R,
     SWITCHES_WIFI_TWT,
+    CONNECTED_VIA_ID_PRIMARY
 )
 
 from homeassistant.const import (
@@ -40,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 # ---------------------------
 #   router_data_check_authorized
 # ---------------------------
-def router_data_check_authorized(response: ClientResponse, result: Dict) -> bool:
+def router_data_check_authorized(response: ClientResponse, result: dict[str, Any]) -> bool:
     if response.status == 404:
         return False
     if result is None or result.get("EmuiVersion", "-") == "-":
@@ -52,13 +53,12 @@ def router_data_check_authorized(response: ClientResponse, result: Dict) -> bool
 #   HuaweiControllerDataUpdateCoordinator
 # ---------------------------
 class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
-    """HuaweiController Class"""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         """Initialize HuaweiController."""
         self._router_info: RouterInfo | None = None
-        self._switch_states: Dict[str, bool] = {}
-        self._connected_devices: Dict[str, ConnectedDevice] = {}
+        self._switch_states: dict[str, bool] = {}
+        self._connected_devices: dict[str, ConnectedDevice] = {}
 
         self._api: HuaweiApi = HuaweiApi(
             host=config_entry.data[CONF_HOST],
@@ -89,26 +89,32 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def cfg_host(self) -> str:
+        """Return the host of the router."""
         return self.config_entry.data[CONF_HOST]
 
     @property
     def router_info(self) -> RouterInfo | None:
+        """Return the information of the router."""
         return self._router_info
 
     @property
-    def switches(self) -> Dict[str, bool]:
+    def switches(self) -> dict[str, bool]:
+        """Return the switches states."""
         return self._switch_states
 
     @property
-    def connected_devices(self) -> Dict[str, ConnectedDevice]:
+    def connected_devices(self) -> dict[str, ConnectedDevice]:
+        """Return the connected devices."""
         return self._connected_devices
 
     @property
     def configuration_url(self) -> str:
+        """Return the router's configuration URL."""
         return self._api.router_url
 
     @property
     def device_info(self) -> DeviceInfo:
+        """Return the DeviceInfo."""
         return DeviceInfo(
             configuration_url=self.configuration_url,
             identifiers={(DOMAIN, self.router_info.serial_number)},
@@ -120,6 +126,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def async_update(self) -> None:
+        """Asynchronous update of all data."""
         _LOGGER.debug("Update started")
         await self._update_router_data()
         await self._update_nfc_switch()
@@ -128,6 +135,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Update completed")
 
     async def _update_router_data(self) -> None:
+        """Asynchronous update of router information."""
         _LOGGER.debug("Updating router data")
         data = await self._api.get("api/system/deviceinfo", check_authorized=router_data_check_authorized)
         self._router_info = RouterInfo(
@@ -142,15 +150,18 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug('Router data updated')
 
     def unload(self) -> None:
+        """Unload the coordinator and disconnect from API."""
         self._api.disconnect()
 
     async def _update_nfc_switch(self) -> None:
+        """Asynchronous update of NFC switch state."""
         _LOGGER.debug('Updating nfc switch state')
         data = await self._api.get("api/bsp/nfc_switch")
         self._switch_states[SWITCHES_NFC] = data.get('nfcSwitch') == 1
         _LOGGER.debug('Nfc switch state updated to %s', self._switch_states[SWITCHES_NFC])
 
     async def _update_wifi_basic_switches(self) -> None:
+        """Asynchronous update of Wi-Fi switches state."""
         _LOGGER.debug('Updating 80211r and TWT switch states')
         data = await self._api.get("api/ntwk/WlanGuideBasic?type=notshowpassall")
         self._switch_states[SWITCHES_WIFI_80211R] = data.get('WifiConfig', [{}])[0].get('Dot11REnable')
@@ -160,22 +171,38 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                       self._switch_states[SWITCHES_WIFI_TWT])
 
     async def _update_connected_devices(self) -> None:
+        """Asynchronous update of connected devices."""
         _LOGGER.debug('Updating connected devices')
         devices_data = await self._api.get("api/system/HostInfo")
-        devices_topology = await self._api.get("api/device/topology")
+        devices_topology = cast(List[dict[str, Any]], await self._api.get("api/device/topology"))
 
-        mesh_routers = filter(lambda item: item.get('HiLinkType') == "Device",
-                              devices_topology)
+        """recursively search all HiLink routers with connected devices"""
+        def get_mesh_routers(devices: List[dict[str, Any]]) -> Iterator[dict[str, Any]]:
+            for candidate in devices:
+                if candidate.get('HiLinkType') == "Device":
+                    yield candidate
+                if 'ConnectedDevices' in candidate:
+                    for connected_router in get_mesh_routers(candidate.get('ConnectedDevices')):
+                        yield connected_router
 
-        devices_to_routers = {}
+        mesh_routers = get_mesh_routers(devices_topology)
+
+        devices_to_routers: dict[str, Any] = {}
         for mesh_router in mesh_routers:
-            router_name = next((item.get('ActualName') for item in devices_data
-                                if item.get('MACAddress') == mesh_router.get('MACAddress')),
-                               mesh_router.get('MACAddress'))
-            if 'ConnectedDevices' in mesh_router:
-                for mesh_connected_device in mesh_router.get('ConnectedDevices', []):
-                    if 'MACAddress' in mesh_connected_device:
-                        devices_to_routers[mesh_connected_device['MACAddress']] = router_name
+            """find same device in devices_data by MAC address"""
+            router = next(
+                (
+                    item for item in devices_data if item.get('MACAddress') == mesh_router.get('MACAddress')
+                ),
+                {"ActualName": mesh_router.get('MACAddress'), "MACAddress": mesh_router.get('MACAddress')}
+            )
+            """devices_to_routers[device_mac] = router_info """
+            for mesh_connected_device in mesh_router.get('ConnectedDevices', []):
+                if 'MACAddress' in mesh_connected_device:
+                    devices_to_routers[mesh_connected_device['MACAddress']] = {
+                        "name": router.get('ActualName'),
+                        "id": router.get('MACAddress')
+                    }
 
         for device_data in devices_data:
             mac: str = device_data['MACAddress']
@@ -190,14 +217,21 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                 self._connected_devices[device.mac] = device
 
             if is_active:
-                connected_via = devices_to_routers.get(mac, self.name or 'Primary router')
+                """if nothing is found in the devices_to_routers, then the device is connected to the primary router"""
+                connected_via = devices_to_routers.get(mac,
+                                                       {
+                                                           "name": self.name or 'Primary router',
+                                                           "id": CONNECTED_VIA_ID_PRIMARY
+                                                       })
                 device.update_device_data(name, host_name, True,
-                                          connected_via=connected_via,
+                                          connected_via=connected_via.get("name"),
                                           ip_address=device_data.get('IPAddress'),
                                           interface_type=device_data.get('InterfaceType'),
                                           rssi=device_data.get('rssi'),
                                           is_guest=device_data.get('IsGuest'),
-                                          is_hilink=device_data.get('HiLinkDevice')
+                                          is_hilink=device_data.get('HiLinkDevice'),
+                                          vendor_class_id=device_data.get('VendorClassID'),
+                                          connected_via_id=connected_via.get("id")
                                           )
             else:
                 device.update_device_data(name, host_name, False)
@@ -205,17 +239,22 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug('Connected devices updated')
 
     # ---------------------------
-    #   set_value_async
+    #   async_set_value
     # ---------------------------
-    async def async_set_value(self, path: str, value: Dict, extra_data: Dict | None = None) -> Dict:
+    async def async_set_value(
+            self,
+            path: str,
+            value: dict[str, Any],
+            extra_data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Change value using Huawei API"""
         result = await self._api.post(path, value, extra_data=extra_data)
         await self.async_request_refresh()
         return result
 
     # ---------------------------
-    #   get_value_async
+    #   async_get_value
     # ---------------------------
-    async def async_get_value(self, path: str) -> Dict:
+    async def async_get_value(self, path: str) -> dict[str, Any]:
         """Retrieve value using Huawei API"""
         return await self._api.get(path)

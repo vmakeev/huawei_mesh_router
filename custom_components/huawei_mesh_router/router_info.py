@@ -6,7 +6,7 @@ from typing import Any
 # ---------------------------
 class RouterInfo:
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         self._serial_number = kwargs.get("serial_number")
         self._software_version = kwargs.get("software_version")
         self._hardware_version = kwargs.get("hardware_version")

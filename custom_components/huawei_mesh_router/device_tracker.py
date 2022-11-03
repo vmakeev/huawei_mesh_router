@@ -1,6 +1,7 @@
 """Support for Huawei routers as device tracker."""
 import logging
 
+from typing import Any
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker.const import (
     SOURCE_TYPE_ROUTER,
@@ -14,7 +15,7 @@ from .connected_device import ConnectedDevice
 from .const import DOMAIN
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
-FILTER_ATTRS = ("ip_address",)
+FILTER_ATTRS = ("ip_address", "connected_via_id", "vendor_class_id")
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -45,7 +46,7 @@ async def async_setup_entry(
 # ---------------------------
 @callback
 def update_items(coordinator: HuaweiControllerDataUpdateCoordinator,
-                 async_add_entities, tracked):
+                 async_add_entities, tracked) -> None:
     """Update tracked device state from the hub."""
     new_tracked = []
     for mac, device in coordinator.connected_devices.items():
@@ -63,18 +64,18 @@ def update_items(coordinator: HuaweiControllerDataUpdateCoordinator,
 class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     """Representation of network device."""
 
-    def __init__(self, device: ConnectedDevice, coordinator: HuaweiControllerDataUpdateCoordinator):
+    def __init__(self, device: ConnectedDevice, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
         """Initialize the tracked device."""
         self.device: ConnectedDevice = device
         super().__init__(coordinator)
 
     @property
-    def is_connected(self):
+    def is_connected(self) -> bool:
         """Return true if the client is connected to the network."""
         return self.device.is_active
 
     @property
-    def source_type(self):
+    def source_type(self) -> str:
         """Return the source type of the client."""
         return SOURCE_TYPE_ROUTER
 
@@ -104,7 +105,7 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
         return f'{self.coordinator.unique_id}_{self.device.mac}'
 
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the device state attributes."""
         return {k: v for k, v in self.device.all_attrs.items() if k not in FILTER_ATTRS}
 

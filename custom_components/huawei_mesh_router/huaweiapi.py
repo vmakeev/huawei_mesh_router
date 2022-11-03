@@ -3,7 +3,7 @@ import logging
 import hmac
 import hashlib
 import asyncio
-from typing import Dict, Any
+from typing import Any, Callable, Dict
 
 import aiohttp
 import re
@@ -18,9 +18,13 @@ _LOGGER = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "SessionID_R3"
 
+APICALL_ERRCODE_UNAUTHORIZED = -2
+APICALL_ERRCODE_REQUEST = -3
+
 APICALL_ERRCAT_CREDENTIALS = "user_pass_err"
 APICALL_ERRCAT_CSRF = "csrf_error"
 APICALL_ERRCAT_REQUEST = "request_error"
+APICALL_ERRCAT_UNAUTHORIZED = "unauthorized"
 
 AUTH_FAILURE_GENERAL = "auth_general"
 AUTH_FAILURE_CREDENTIALS = "auth_invalid_credentials"
@@ -29,7 +33,7 @@ AUTH_FAILURE_CSRF = "auth_invalid_csrf"
 
 class AuthenticationError(Exception):
 
-    def __init__(self, message: str, reason_code: str):
+    def __init__(self, message: str, reason_code: str) -> None:
         super().__init__(message)
         self._message = message
         self._reason_code = reason_code
@@ -38,7 +42,7 @@ class AuthenticationError(Exception):
     def reason_code(self) -> str | None:
         return self._reason_code
 
-    def __str__(self, *args, **kwargs):
+    def __str__(self, *args, **kwargs) -> str:
         """ Return str(self). """
         return f"{self._message}; reason: {self._reason_code}"
 
@@ -59,7 +63,7 @@ class ApiCallError(Exception):
     def category(self) -> int | None:
         return self._error_category
 
-    def __str__(self, *args, **kwargs):
+    def __str__(self, *args, **kwargs) -> str:
         """ Return str(self). """
         return f"{self._message}; code: {self._error_code}, category: {self._error_category}"
 
@@ -113,7 +117,7 @@ def _check_has_cookies(cookie_jar: AbstractCookieJar, url: URL) -> None:
 # ---------------------------
 #   _check_authorized
 # ---------------------------
-def _check_authorized(response: ClientResponse, result: Dict):
+def _check_authorized(response: ClientResponse, result: Dict) -> bool:
     return response.status != 404
 
 
@@ -141,7 +145,7 @@ class HuaweiApi:
         self._call_locker = asyncio.Lock()
 
         schema = "https" if use_ssl else "http"
-        self._base_url: str = "{0}://{1}:{2}".format(schema, host, port)
+        self._base_url: str = f"{schema}://{host}:{port}"
 
     @property
     def router_url(self) -> str:
@@ -183,7 +187,7 @@ class HuaweiApi:
         except Exception as ex:
             _LOGGER.error("GET %s failed: %s", path, str(ex))
             raise ApiCallError(f"Can not perform GET request at {path} cause of {str(ex)}",
-                               None, APICALL_ERRCAT_REQUEST)
+                               APICALL_ERRCODE_REQUEST, APICALL_ERRCAT_REQUEST)
 
     async def _post_raw(self, path: str, data: Dict) -> ClientResponse:
         """Perform POST request to the specified relative URL with specified body and return raw ClientResponse."""
@@ -198,7 +202,7 @@ class HuaweiApi:
         except Exception as ex:
             _LOGGER.error("POST %s failed: %s", path, str(ex))
             raise ApiCallError(f'Can not perform POST request at {path} cause of {str(ex)}',
-                               None, APICALL_ERRCAT_REQUEST)
+                               APICALL_ERRCODE_REQUEST, APICALL_ERRCAT_REQUEST)
 
     def _refresh_session(self) -> None:
         """Initialize the client session (if not exists) and clear cookies."""
@@ -297,7 +301,8 @@ class HuaweiApi:
         async with self._call_locker:
             await self._ensure_initialized()
 
-            check_authorized = kwargs.get('check_authorized') or _check_authorized
+            check_authorized: Callable[[ClientResponse, Dict], bool] = \
+                kwargs.get('check_authorized') or _check_authorized
 
             response = await self._get_raw(path)
             result = await _get_response_json(response)
@@ -308,7 +313,8 @@ class HuaweiApi:
                 response = await self._get_raw(path)
                 result = await _get_response_json(response)
                 if not check_authorized(response, result):
-                    raise ApiCallError(f"Api call error, status:{response.status}", -2, "unauthorized")
+                    raise ApiCallError(f"Api call error, status:{response.status}",
+                                       APICALL_ERRCODE_UNAUTHORIZED, APICALL_ERRCAT_UNAUTHORIZED)
 
             self._handle_csrf_dict(result)
             _handle_error_dict(result)
@@ -319,7 +325,8 @@ class HuaweiApi:
         async with self._call_locker:
             await self._ensure_initialized()
 
-            check_authorized = kwargs.get('check_authorized') or _check_authorized
+            check_authorized: Callable[[ClientResponse, Dict], bool] = \
+                kwargs.get('check_authorized') or _check_authorized
 
             dto = {"csrf": self._active_csrf, "data": payload}
             if kwargs.get('extra_data') is not None:
@@ -341,14 +348,15 @@ class HuaweiApi:
                 response = await self._post_raw(path, dto)
                 result = await _get_response_json(response)
                 if not check_authorized(response, result):
-                    raise ApiCallError(f"Api call error, status:{response.status}", -2, "unauthorized")
+                    raise ApiCallError(f"Api call error, status:{response.status}",
+                                       APICALL_ERRCODE_UNAUTHORIZED, APICALL_ERRCAT_UNAUTHORIZED)
 
             self._handle_csrf_dict(result)
             _handle_error_dict(result)
 
             return result
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Close session."""
         _LOGGER.debug("Disconnecting")
         if self._session is not None:
