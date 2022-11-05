@@ -9,6 +9,7 @@ from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -19,7 +20,7 @@ from homeassistant.components.sensor import (
 )
 
 from .const import DOMAIN, CONNECTED_VIA_ID_PRIMARY
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator
+from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 from .connected_device import ConnectedDevice, HuaweiInterfaceType
 
 UNITS_CLIENTS = "clients"
@@ -36,17 +37,6 @@ class HuaweiClientsSensorEntityDescription(SensorEntityDescription):
     native_unit_of_measurement = UNITS_CLIENTS
     state_class = SensorStateClass.MEASUREMENT
     entity_category = EntityCategory.DIAGNOSTIC
-
-
-# ---------------------------
-#   _get_mesh_routers
-# ---------------------------
-def _get_mesh_routers(devices: [ConnectedDevice]) -> dict[str, ConnectedDevice]:
-    result = {}
-    for device in devices:
-        if device.is_active and device.is_router:
-            result[device.mac] = device
-    return result
 
 
 # ---------------------------
@@ -94,65 +84,39 @@ async def async_setup_entry(
 
     async_add_entities(sensors)
 
-    existing_routers: dict[str, ConnectedDevice] = {}
+    watcher: RoutersWatcher = RoutersWatcher()
+
+    @callback
+    def on_router_added(mac: str, router: ConnectedDevice) -> None:
+        """When a new mesh router is detected."""
+        entity = HuaweiConnectedDevicesSensor(coordinator,
+                                              HuaweiClientsSensorEntityDescription(
+                                                  key=mac,
+                                                  icon="mdi:router-wireless",
+                                                  name=_generate_clients_sensor_name(coordinator, router.name)
+                                              ),
+                                              lambda device, via_id=mac:
+                                              device.is_active and device.connected_via_id == via_id)
+        async_add_entities([entity])
+
+    @callback
+    def on_router_removed(er: EntityRegistry, mac: str, router: ConnectedDevice) -> None:
+        """When a known mesh router becomes unavailable."""
+        sensor_name = _generate_clients_sensor_name(coordinator, router.name)
+        unique_id = _generate_sensor_unique_id(coordinator, sensor_name)
+        entity_id = er.async_get_entity_id(Platform.SENSOR, DOMAIN, unique_id)
+        if entity_id:
+            er.async_remove(entity_id)
+        else:
+            _LOGGER.warning("Can not remove unavailable sensor '%s': entity id not found.", unique_id)
 
     @callback
     def coordinator_updated() -> None:
         """Update the status of the device."""
-        update_items(coordinator, async_add_entities, existing_routers)
+        watcher.watch_for_changes(coordinator, on_router_added, on_router_removed)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
     coordinator_updated()
-
-
-# ---------------------------
-#   update_items
-# ---------------------------
-@callback
-def update_items(coordinator: HuaweiControllerDataUpdateCoordinator,
-                 async_add_entities,
-                 existing_routers: dict[str, ConnectedDevice]) -> None:
-    """Update connected routers"""
-    new_sensors = []
-
-    actual_routers: dict[str, ConnectedDevice] = _get_mesh_routers(coordinator.connected_devices.values())
-
-    for device_id, router in actual_routers.items():
-        if device_id in existing_routers:
-            continue
-
-        entity = HuaweiConnectedDevicesSensor(coordinator,
-                                              HuaweiClientsSensorEntityDescription(
-                                                  key=device_id,
-                                                  icon="mdi:router-wireless",
-                                                  name=_generate_clients_sensor_name(coordinator, router.name)
-                                              ),
-                                              lambda device, via_id=device_id:
-                                              device.is_active and device.connected_via_id == via_id)
-        existing_routers[device_id] = router
-        new_sensors.append(entity)
-
-    if new_sensors:
-        async_add_entities(new_sensors)
-
-    """remove not available routers"""
-    unavailable_routers = {}
-    for device_id, existing_router in existing_routers.items():
-        if device_id not in actual_routers:
-            unavailable_routers[device_id] = existing_router
-
-    if unavailable_routers:
-        er = entity_registry.async_get(coordinator.hass)
-        for device_id, unavailable_router in unavailable_routers.items():
-            existing_routers.pop(device_id, None)
-
-            sensor_name = _generate_clients_sensor_name(coordinator, unavailable_router.name)
-            unique_id = _generate_sensor_unique_id(coordinator, sensor_name)
-            entity_id = er.async_get_entity_id(Platform.SENSOR, DOMAIN, unique_id)
-            if entity_id:
-                er.async_remove(entity_id)
-            else:
-                _LOGGER.warning("Can not remove unavailable router '%s': entity id not found.", unique_id)
 
 
 # ---------------------------
