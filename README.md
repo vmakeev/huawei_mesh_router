@@ -2,10 +2,10 @@
 
 Home Assistant custom component for control [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/) routers over LAN.
 
-**0.7.2**
+**0.7.3**
 
 - sensors for the number of connected devices (total and for each individual router)
-- enable/disable NFC
+- enable/disable NFC on each router separately
 - enable/disable TWT (reduce power consumption of Wi-Fi 6 devices in sleep mode)
 - control of the fast roaming function (802.11r)
 - connected devices tracking
