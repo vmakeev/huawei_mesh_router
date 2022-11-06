@@ -107,7 +107,7 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the device state attributes."""
-        return {k: v for k, v in self.device.all_attrs.items() if k not in FILTER_ATTRS}
+        return {k: v for k, v in self.device.all_attrs if k not in FILTER_ATTRS}
 
     @property
     def entity_registry_enabled_default(self) -> bool:

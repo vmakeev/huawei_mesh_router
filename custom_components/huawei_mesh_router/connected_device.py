@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict, Iterable, Tuple
 from homeassistant.backports.enum import StrEnum
 
 from .const import VENDOR_CLASS_ID_ROUTER
@@ -23,21 +23,25 @@ class ConnectedDevice:
                  host_name: str,
                  mac: str,
                  is_active: bool,
+                 tags: list[str],
                  **kwargs: Dict) -> None:
         self._name: str = name
         self._host_name: str = host_name
         self._mac: str = mac
         self._is_active: bool = is_active
+        self._tags: list[str] = tags
         self._data: Dict = kwargs or {}
 
     def update_device_data(self,
                            name: str,
                            host_name: str,
                            is_active: bool,
+                           tags: list[str],
                            **kwargs: Dict):
         self._name: str = name
         self._host_name: str = host_name
         self._is_active: bool = is_active
+        self._tags: list[str] = tags
         self._data: Dict = kwargs or {}
 
     def __str__(self) -> str:
@@ -97,6 +101,13 @@ class ConnectedDevice:
         return self.is_hilink and self._data.get("vendor_class_id") == VENDOR_CLASS_ID_ROUTER
 
     @property
-    def all_attrs(self) -> Dict:
+    def tags(self) -> list[str]:
+        """Return device tags list."""
+        return self._tags
+
+    @property
+    def all_attrs(self) -> Iterable[Tuple[str, Any]]:
         """Return dictionary with additional attributes."""
-        return self._data
+        for key, value in self._data.items():
+            yield key, value
+        yield "tags", self._tags

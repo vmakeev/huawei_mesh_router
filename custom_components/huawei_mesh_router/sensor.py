@@ -6,7 +6,6 @@ from typing import Any, Callable
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import callback, HomeAssistant
-from homeassistant.helpers import entity_registry
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity_registry import EntityRegistry
@@ -160,6 +159,10 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
         wifi_2_4_clients: int = 0
         wifi_5_clients: int = 0
 
+        tagged_devices: dict[str, int] = {}
+        for tag in self.coordinator.tags_map.get_all_tags():
+            tagged_devices[tag] = 0
+
         for device in self.coordinator.connected_devices.values():
 
             if not self._devices_predicate(device):
@@ -181,6 +184,12 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
                 wireless_clients += 1
                 wifi_5_clients += 1
 
+            for tag in device.tags:
+                if tag in tagged_devices:
+                    tagged_devices[tag] += 1
+                else:
+                    tagged_devices[tag] = 1
+
         self._actual_value = total_clients
 
         self._attrs["guest_clients"] = guest_clients
@@ -189,6 +198,9 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
         self._attrs["lan_clients"] = lan_clients
         self._attrs["wifi_2_4_clients"] = wifi_2_4_clients
         self._attrs["wifi_5_clients"] = wifi_5_clients
+
+        for tag, count in tagged_devices.items():
+            self._attrs[f"tagged_{tag}_clients"] = count
 
         super()._handle_coordinator_update()
 

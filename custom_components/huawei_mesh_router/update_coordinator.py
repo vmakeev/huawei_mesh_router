@@ -1,10 +1,9 @@
 """Huawei Controller for Huawei Router."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
-from typing import Any, cast, Callable, Iterator, List
+from typing import Any, cast, Callable, Iterable, List
 
 from aiohttp import ClientResponse
 
@@ -13,6 +12,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.entity_registry import EntityRegistry
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .connected_device import ConnectedDevice
 from .router_info import RouterInfo
@@ -108,12 +108,61 @@ class RoutersWatcher:
 
 
 # ---------------------------
+#   TagsMap
+# ---------------------------
+class TagsMap:
+
+    def __init__(self, tags_map_storage: Store):
+        self._storage: Store = tags_map_storage
+        self._mac_to_tags: dict[str, list[str]] = {}
+        self._tag_to_macs: dict[str, list[str]] = {}
+        self._is_loaded: bool = False
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._is_loaded
+
+    async def load(self):
+        _LOGGER.debug("Stored tags loading started")
+
+        self._mac_to_tags.clear()
+        self._tag_to_macs.clear()
+
+        self._tag_to_macs = await self._storage.async_load()
+        if not self._tag_to_macs:
+            _LOGGER.debug("No stored tags found, creating sample")
+            default_tags = {"homeowners": ["place_mac_addresses_here"], "visitors": ["place_mac_addresses_here"]}
+            await self._storage.async_save(default_tags)
+            self._tag_to_macs = default_tags
+
+        for tag, devices_macs in self._tag_to_macs.items():
+            for device_mac in devices_macs:
+                if device_mac not in self._mac_to_tags:
+                    self._mac_to_tags[device_mac] = []
+                self._mac_to_tags[device_mac].append(tag)
+
+        self._is_loaded = True
+
+        _LOGGER.debug("Stored tags loading finished")
+
+    def get_tags(self, mac_address: str) -> list[str]:
+        return self._mac_to_tags.get(mac_address, [])
+
+    def get_all_tags(self) -> Iterable[str]:
+        return self._tag_to_macs.keys()
+
+    def get_devices(self, tag: str) -> list[str]:
+        return self._tag_to_macs.get(tag, [])
+
+
+# ---------------------------
 #   HuaweiControllerDataUpdateCoordinator
 # ---------------------------
 class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, tags_map_storage: Store) -> None:
         """Initialize HuaweiController."""
+        self._tags_map: TagsMap = TagsMap(tags_map_storage)
         self._router_info: RouterInfo | None = None
         self._switch_states: dict[str, bool] = {}
         self._connected_devices: dict[str, ConnectedDevice] = {}
@@ -187,6 +236,10 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             hw_version=self.router_info.hardware_version,
             sw_version=self.router_info.software_version,
         )
+
+    @property
+    def tags_map(self) -> TagsMap:
+        return self._tags_map
 
     def _safe_disconnect(self, api: HuaweiApi) -> None:
         """Disconnect from API."""
@@ -289,7 +342,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         """recursively search all HiLink routers with connected devices"""
 
-        def get_mesh_routers(devices: List[dict[str, Any]]) -> Iterator[dict[str, Any]]:
+        def get_mesh_routers(devices: List[dict[str, Any]]) -> Iterable[dict[str, Any]]:
             for candidate in devices:
                 if candidate.get('HiLinkType') == "Device":
                     yield candidate
@@ -316,16 +369,20 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                         "id": router.get('MACAddress')
                     }
 
+        if not self._tags_map.is_loaded:
+            await self._tags_map.load()
+
         for device_data in devices_data:
             mac: str = device_data['MACAddress']
             host_name: str = device_data.get('HostName', f'device_{mac}')
             name: str = device_data.get('ActualName', host_name)
             is_active: bool = device_data.get('Active', False)
+            tags = self._tags_map.get_tags(mac)
 
             if mac in self._connected_devices:
                 device = self._connected_devices[mac]
             else:
-                device = ConnectedDevice(name, host_name, mac, is_active)
+                device = ConnectedDevice(name, host_name, mac, is_active, tags)
                 self._connected_devices[device.mac] = device
 
             if is_active:
@@ -335,7 +392,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                                                            "name": self.name or 'Primary router',
                                                            "id": CONNECTED_VIA_ID_PRIMARY
                                                        })
-                device.update_device_data(name, host_name, True,
+                device.update_device_data(name, host_name, True, tags,
                                           connected_via=connected_via.get("name"),
                                           ip_address=device_data.get('IPAddress'),
                                           interface_type=device_data.get('InterfaceType'),
@@ -346,7 +403,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                                           connected_via_id=connected_via.get("id")
                                           )
             else:
-                device.update_device_data(name, host_name, False)
+                device.update_device_data(name, host_name, False, tags)
 
         _LOGGER.debug('Connected devices updated')
 
