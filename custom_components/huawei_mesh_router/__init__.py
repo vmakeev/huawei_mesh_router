@@ -4,8 +4,10 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation
+from homeassistant.helpers.storage import Store
 
 from .const import (
+    STORAGE_VERSION,
     DOMAIN,
     PLATFORMS,
     ATTR_MANUFACTURER
@@ -31,7 +33,8 @@ async def async_setup(hass, _config):
 # ---------------------------
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Huawei Router as config entry."""
-    coordinator = HuaweiControllerDataUpdateCoordinator(hass, config_entry)
+    store: Store = Store(hass, STORAGE_VERSION, f"huawei_mesh_{config_entry.entry_id}_tags")
+    coordinator = HuaweiControllerDataUpdateCoordinator(hass, config_entry, store)
     await coordinator.async_config_entry_first_refresh()
 
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))

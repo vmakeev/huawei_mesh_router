@@ -2,6 +2,8 @@ from homeassistant.const import Platform
 
 DOMAIN = "huawei_mesh_router"
 
+STORAGE_VERSION = 1
+
 DEFAULT_HOST = "192.168.3.1"
 DEFAULT_USER = "admin"
 DEFAULT_PORT = 80

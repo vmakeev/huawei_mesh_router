@@ -2,8 +2,9 @@
 
 Home Assistant custom component for control [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/) routers over LAN.
 
-**0.7.3**
+**0.7.4**
 
+- tagging connected devices
 - sensors for the number of connected devices (total and for each individual router)
 - enable/disable NFC on each router separately
 - enable/disable TWT (reduce power consumption of Wi-Fi 6 devices in sleep mode)
@@ -38,6 +39,7 @@ Each tracked device exposes the following attributes:
 | `rssi`           | Signal strength for wireless connections     | Yes                 |
 | `is_guest`       | Is the device connected to the guest network | Yes                 |
 | `is_hilink`      | Is the device connected via HiLink (usually other routers) | Yes   |
+| `tags`           | List of [tags](#device-tags) that marked the device          | No                  |
 | `friendly_name`  | Device name provided by the router           | No                  |
 
 Tracked device names, including routers, can be changed in [your mesh control interface](http://192.168.3.1/html/index.html#/devicecontrol), after which the component will update them in Home Assistant
@@ -71,11 +73,84 @@ _Note: when additional routers are disconnected from the network, their personal
 
 Each sensor exposes the following attributes:
 
-|     Attribute      |                  Description                     |
-|--------------------|--------------------------------------------------|
-| `guest_clients`    | Number of devices connected to the guest network |
-| `hilink_clients`   | Number of devices connected via HiLink           |
-| `wireless_clients` | Number of devices connected wirelessly           |
-| `lan_clients`      | Number of devices connected by cable             |
-| `wifi_2_4_clients` | Number of devices connected to Wi-Fi 2.4 GHz     |
-| `wifi_5_clients`   | Number of devices connected to Wi-Fi 5 GHz       |
+|         Attribute            |                         Description                          |
+|------------------------------|--------------------------------------------------------------|
+| `guest_clients`              | Number of devices connected to the guest network             |
+| `hilink_clients`             | Number of devices connected via HiLink                       |
+| `wireless_clients`           | Number of devices connected wirelessly                       |
+| `lan_clients`                | Number of devices connected by cable                         |
+| `wifi_2_4_clients`           | Number of devices connected to Wi-Fi 2.4 GHz                 |
+| `wifi_5_clients`             | Number of devices connected to Wi-Fi 5 GHz                   |
+| `tagged_<tag_name>_clients`  | Number of connected devices with a specific [tag](#device-tags) `<tag_name>` |
+
+## Customization
+
+### Device tags
+
+The component allows you to attach one or more tags to each client device in order to be able to use in automation the number of devices marked with a tag, connected to a specific router, or to the entire mesh network.
+
+The component will attempt to load the device tag-to-MAC mapping from the file located at `<home assistant config folder>/.storage/huawei_mesh_<long_config_id>_tags`. If the file does not exist, then the component will create it with a usage example:
+
+```
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "huawei_mesh_<long_config_id>_tags",
+  "data": {
+    "homeowners": [
+      "place_mac_addresses_here"
+    ],
+    "visitors": [
+      "place_mac_addresses_here"
+    ]
+  }
+}
+```
+
+_Note: unfortunately, editing the list of tags and devices associated with them is currently available only through editing this file._
+
+Each tag can have multiple devices associated with it. Each device can be associated with multiple tags.
+
+Example:
+```
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "huawei_mesh_<long_config_id>_tags",
+  "data": {
+    "my_awesome_tag": [
+      "00:11:22:33:44:55",
+      "A0:B1:C2:D3:E4:F5",
+      "F5:E4:D3:C2:B1:A0"
+    ],
+    "another_tag": [
+      "00:11:22:33:44:55",
+      "A9:B8:C7:D6:E5:F4"
+    ],
+    "third_tag": [
+      "99:88:77:66:55:44"
+    ]
+  }
+}
+```
+
+**Usage example:**
+
+|  Tag name    |          Tagged Devices           |
+|--------------|-----------------------------------|
+|  homeowners  | Michael's phone, Michael's laptop |
+|  visitors    | Victoria's phone, Eugene's phone  |
+
+
+- Michael's phone is connected to the "Garage" router
+- Michael's laptop is connected to the "Living room" router
+- Victoria's phone is connected to the "Living room" router
+- Eugene's phone is connected to the "primary" router
+
+In this scenario, the sensors for the number of connected devices will provide the following attributes:
+
+|                 Sensor                        | Attributes and values |
+|-----------------------------------------------|-----------------------|
+| `sensor.huawei_mesh_3_clients_garage`         | `guest_clients`: 0 <br/> `hilink_clients`: 0<br/>`wireless_clients`: 1<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 1<br />`tagged_homeowners_clients`: 1 _// Michael's phone_<br />`tagged_visitors_clients`: 0 |
+| `sensor.huawei_mesh_3_clients_living_room`    | `guest_clients`: 0 <br/> `hilink_clients`: 0<br/>`wireless_clients`: 2<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 2<br />`tagged_homeowners_clients`: 1 _// Michael's laptop_<br />`tagged_visitors_clients`: 1 _// Victoria's phone_ |
+| `sensor.huawei_mesh_3_clients_primary_router` | `guest_clients`: 0 <br/> `hilink_clients`: 2<br/>`wireless_clients`: 3<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 3<br />`tagged_homeowners_clients`: 0<br />`tagged_visitors_clients`: 1 _// Eugene's phone_ |
