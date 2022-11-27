@@ -1,7 +1,6 @@
 from typing import Any, Dict, Iterable, Tuple
 from homeassistant.backports.enum import StrEnum
-
-from .const import VENDOR_CLASS_ID_ROUTER
+from .client.classes import VENDOR_CLASS_ID_ROUTER
 
 
 # ---------------------------
@@ -24,7 +23,7 @@ class ConnectedDevice:
                  mac: str,
                  is_active: bool,
                  tags: list[str],
-                 **kwargs: Dict) -> None:
+                 **kwargs) -> None:
         self._name: str = name
         self._host_name: str = host_name
         self._mac: str = mac
@@ -37,7 +36,7 @@ class ConnectedDevice:
                            host_name: str,
                            is_active: bool,
                            tags: list[str],
-                           **kwargs: Dict):
+                           **kwargs):
         self._name: str = name
         self._host_name: str = host_name
         self._is_active: bool = is_active
@@ -98,7 +97,7 @@ class ConnectedDevice:
     @property
     def is_router(self) -> bool:
         """Return true when device is hilink router."""
-        return self.is_hilink and self._data.get("vendor_class_id") == VENDOR_CLASS_ID_ROUTER
+        return self._data.get("is_router", False)
 
     @property
     def tags(self) -> list[str]:

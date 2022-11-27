@@ -30,25 +30,38 @@ AUTH_FAILURE_CREDENTIALS = "auth_invalid_credentials"
 AUTH_FAILURE_CSRF = "auth_invalid_csrf"
 
 
+# ---------------------------
+#   AuthenticationError
+# ---------------------------
 class AuthenticationError(Exception):
 
     def __init__(self, message: str, reason_code: str) -> None:
+        """Initialize."""
         super().__init__(message)
         self._message = message
         self._reason_code = reason_code
 
     @property
     def reason_code(self) -> str | None:
+        """Error reason code."""
         return self._reason_code
 
     def __str__(self, *args, **kwargs) -> str:
         """ Return str(self). """
         return f"{self._message}; reason: {self._reason_code}"
 
+    def __repr__(self) -> str:
+        """ Return repr(self). """
+        return self.__str__()
 
+
+# ---------------------------
+#   ApiCallError
+# ---------------------------
 class ApiCallError(Exception):
 
     def __init__(self, message: str, error_code: int | None, error_category: str | None):
+        """Initialize."""
         super().__init__(message)
         self._message = message
         self._error_code = error_code
@@ -56,15 +69,21 @@ class ApiCallError(Exception):
 
     @property
     def code(self) -> int | None:
+        """Error code."""
         return self._error_code
 
     @property
     def category(self) -> int | None:
+        """Error category."""
         return self._error_category
 
     def __str__(self, *args, **kwargs) -> str:
         """ Return str(self). """
         return f"{self._message}; code: {self._error_code}, category: {self._error_category}"
+
+    def __repr__(self) -> str:
+        """ Return repr(self). """
+        return self.__str__()
 
 
 # ---------------------------
@@ -79,10 +98,9 @@ async def _get_response_text(response: ClientResponse) -> str:
 # ---------------------------
 #   _get_response_json
 # ---------------------------
-async def _get_response_json(response: ClientResponse) -> Dict:
+async def _get_response_json(response: ClientResponse) -> Dict | None:
     text = await _get_response_text(response)
-    result = json.loads(text)
-    return result
+    return json.loads(text) if text else None
 
 
 # ---------------------------
@@ -93,9 +111,9 @@ def _check_authorized(response: ClientResponse, result: Dict) -> bool:
 
 
 # ---------------------------
-#   HuaweiApi
+#   HuaweiCoreApi
 # ---------------------------
-class HuaweiApi:
+class HuaweiCoreApi:
 
     def __init__(
             self,
@@ -106,8 +124,9 @@ class HuaweiApi:
             password: str,
             verify_ssl: bool
     ) -> None:
+        """Initialize."""
         self._logger = logging.getLogger(f"{__name__} ({host})")
-        self._logger.debug("New instance of HuaweiApi created")
+        self._logger.debug("New instance of HuaweiCoreApi created")
         self._user: str = user
         self._password: str = password
         self._verify_ssl: bool = verify_ssl
@@ -121,7 +140,7 @@ class HuaweiApi:
 
     @property
     def router_url(self) -> str:
-        """Return router"s configuration url."""
+        """Return router's configuration url."""
         return self._get_url("html/index.html")
 
     def _handle_error_dict(self, data: Dict) -> None:
@@ -180,7 +199,7 @@ class HuaweiApi:
             return response
         except Exception as ex:
             self._logger.error("GET %s failed: %s", path, str(ex))
-            raise ApiCallError(f"Can not perform GET request at {path} cause of {str(ex)}",
+            raise ApiCallError(f"Can not perform GET request at {path} cause of {repr(ex)}",
                                APICALL_ERRCODE_REQUEST, APICALL_ERRCAT_REQUEST)
 
     async def _post_raw(self, path: str, data: Dict) -> ClientResponse:
@@ -195,7 +214,7 @@ class HuaweiApi:
             return response
         except Exception as ex:
             self._logger.error("POST %s failed: %s", path, str(ex))
-            raise ApiCallError(f'Can not perform POST request at {path} cause of {str(ex)}',
+            raise ApiCallError(f'Can not perform POST request at {path} cause of {repr(ex)}',
                                APICALL_ERRCODE_REQUEST, APICALL_ERRCAT_REQUEST)
 
     def _refresh_session(self) -> None:
@@ -284,10 +303,10 @@ class HuaweiApi:
             if ex.category == APICALL_ERRCAT_CSRF:
                 raise AuthenticationError("CSRF error, try again", AUTH_FAILURE_CSRF)
 
-            self._logger.warning("Authentication failed: %s", {str(ex)})
+            self._logger.warning("Authentication failed: %s", {repr(ex)})
             raise AuthenticationError("Authentication failed due to api call error", AUTH_FAILURE_GENERAL)
         except Exception as ex:
-            self._logger.warning("Authentication failed: %s", {str(ex)})
+            self._logger.warning("Authentication failed: %s", {repr(ex)})
             raise AuthenticationError("Authentication failed due to unknown error", AUTH_FAILURE_GENERAL)
 
     async def get(self, path: str, **kwargs: Any) -> Dict:
@@ -306,6 +325,7 @@ class HuaweiApi:
                 await self.authenticate()
                 response = await self._get_raw(path)
                 result = await _get_response_json(response)
+
                 if not check_authorized(response, result):
                     raise ApiCallError(f"Api call error, status:{response.status}",
                                        APICALL_ERRCODE_UNAUTHORIZED, APICALL_ERRCAT_UNAUTHORIZED)
@@ -319,7 +339,7 @@ class HuaweiApi:
         async with self._call_locker:
             await self._ensure_initialized()
 
-            check_authorized: Callable[[ClientResponse, Dict], bool] = \
+            check_authorized: Callable[[ClientResponse, Dict | None], bool] = \
                 kwargs.get('check_authorized') or _check_authorized
 
             dto = {"csrf": self._active_csrf, "data": payload}

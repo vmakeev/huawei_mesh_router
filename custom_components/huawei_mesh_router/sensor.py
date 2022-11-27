@@ -18,7 +18,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
-from .const import DOMAIN, CONNECTED_VIA_ID_PRIMARY
+from .client.huaweiapi import CONNECTED_VIA_ID_PRIMARY
+from .const import DOMAIN
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 from .connected_device import ConnectedDevice, HuaweiInterfaceType
 
@@ -159,6 +160,7 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
         wifi_2_4_clients: int = 0
         wifi_5_clients: int = 0
 
+        untagged_clients: int = 0
         tagged_devices: dict[str, int] = {}
         for tag in self.coordinator.tags_map.get_all_tags():
             tagged_devices[tag] = 0
@@ -184,11 +186,14 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
                 wireless_clients += 1
                 wifi_5_clients += 1
 
-            for tag in device.tags:
-                if tag in tagged_devices:
-                    tagged_devices[tag] += 1
-                else:
-                    tagged_devices[tag] = 1
+            if device.tags is None or len(device.tags) == 0:
+                untagged_clients += 1
+            else:
+                for tag in device.tags:
+                    if tag in tagged_devices:
+                        tagged_devices[tag] += 1
+                    else:
+                        tagged_devices[tag] = 1
 
         self._actual_value = total_clients
 
@@ -201,6 +206,7 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
 
         for tag, count in tagged_devices.items():
             self._attrs[f"tagged_{tag}_clients"] = count
+        self._attrs[f"untagged_clients"] = untagged_clients
 
         super()._handle_coordinator_update()
 

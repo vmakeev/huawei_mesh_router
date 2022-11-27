@@ -18,7 +18,8 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
 )
 from homeassistant.core import callback
-from .huaweiapi import HuaweiApi, AuthenticationError
+from .client.coreapi import AuthenticationError
+from .client.huaweiapi import HuaweiApi
 
 from .const import (
     DOMAIN,
