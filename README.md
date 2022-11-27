@@ -1,9 +1,10 @@
-# Control Huawei WiFi Mesh 3 routers from Home Assistant
+# Control Huawei Mesh routers from Home Assistant
 
-Home Assistant custom component for control [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/) routers over LAN.
+Home Assistant custom component for control Huawei mesh routers over LAN.
 
-**0.7.4**
+**0.7.5**
 
+- automatic detection of available functions
 - tagging connected devices
 - sensors for the number of connected devices (total and for each individual router)
 - enable/disable NFC on each router separately
@@ -14,15 +15,31 @@ Home Assistant custom component for control [Huawei WiFi Mesh 3](https://consume
 - obtaining of device connection parameters (frequency, signal strength, guest and hilink devices)
 - hardware and firmware version of the router
 
+## Supported models
+
+|                                        Name                                        |  Model | Confirmed |           Notes                         |
+|------------------------------------------------------------------------------------|--------|-----------|-----------------------------------------|
+| [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | All features are available              |
+| [Huawei WiFi AX3 Dual-core](https://consumer.huawei.com/en/routers/ax3-dual-core/) | WS7100 |    Yes    | No NFC switches (unsupported by router) |
+| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |    No     | ---                                     |
+| [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     | ---                                     |
+| Other routers with HarmonyOS                                                       | ------ |    No     | Will most likely work                   
+
 ## Installation
 
-Manually copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant.
+### Manual
+
+Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant.
+
+### HACS
+
+[Add a custom repository](https://hacs.xyz/docs/faq/custom_repositories/) `https://github.com/vmakeev/huawei_mesh_router` with `Integration` category to [HACS](https://hacs.xyz/) and restart Home Assistant.
 
 ## Configuration
 
 Configuration > [Integrations](https://my.home-assistant.io/redirect/integrations/) > Add Integration > [Huawei Mesh Router](https://my.home-assistant.io/redirect/config_flow_start/?domain=huawei_mesh_router)
 
-By default, Huawei WiFi Mesh 3 routers use the username `admin`, although it is not displayed in the web interface and mobile applications.
+By default, Huawei mesh routers use the username `admin`, although it is not displayed in the web interface and mobile applications.
 
 ## Devices tracking
 
@@ -39,7 +56,7 @@ Each tracked device exposes the following attributes:
 | `rssi`           | Signal strength for wireless connections     | Yes                 |
 | `is_guest`       | Is the device connected to the guest network | Yes                 |
 | `is_hilink`      | Is the device connected via HiLink (usually other routers) | Yes   |
-| `tags`           | List of [tags](#device-tags) that marked the device          | No                  |
+| `tags`           | List of [tags](#device-tags) that marked the device        | No    |
 | `friendly_name`  | Device name provided by the router           | No                  |
 
 Tracked device names, including routers, can be changed in [your mesh control interface](http://192.168.3.1/html/index.html#/devicecontrol), after which the component will update them in Home Assistant
@@ -82,6 +99,7 @@ Each sensor exposes the following attributes:
 | `wifi_2_4_clients`           | Number of devices connected to Wi-Fi 2.4 GHz                 |
 | `wifi_5_clients`             | Number of devices connected to Wi-Fi 5 GHz                   |
 | `tagged_<tag_name>_clients`  | Number of connected devices with a specific [tag](#device-tags) `<tag_name>` |
+| `untagged_clients`           | Number of connected devices without any [tags](#device-tags) |
 
 ## Customization
 
@@ -151,6 +169,6 @@ In this scenario, the sensors for the number of connected devices will provide t
 
 |                 Sensor                        | Attributes and values |
 |-----------------------------------------------|-----------------------|
-| `sensor.huawei_mesh_3_clients_garage`         | `guest_clients`: 0 <br/> `hilink_clients`: 0<br/>`wireless_clients`: 1<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 1<br />`tagged_homeowners_clients`: 1 _// Michael's phone_<br />`tagged_visitors_clients`: 0 |
-| `sensor.huawei_mesh_3_clients_living_room`    | `guest_clients`: 0 <br/> `hilink_clients`: 0<br/>`wireless_clients`: 2<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 2<br />`tagged_homeowners_clients`: 1 _// Michael's laptop_<br />`tagged_visitors_clients`: 1 _// Victoria's phone_ |
-| `sensor.huawei_mesh_3_clients_primary_router` | `guest_clients`: 0 <br/> `hilink_clients`: 2<br/>`wireless_clients`: 3<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 3<br />`tagged_homeowners_clients`: 0<br />`tagged_visitors_clients`: 1 _// Eugene's phone_ |
+| `sensor.huawei_mesh_3_clients_garage`         | `guest_clients`: 0 <br/> `hilink_clients`: 0<br/>`wireless_clients`: 1<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 1<br />`tagged_homeowners_clients`: 1 _// Michael's phone_<br />`tagged_visitors_clients`: 0 <br />`untagged_clients`: 0 |
+| `sensor.huawei_mesh_3_clients_living_room`    | `guest_clients`: 0 <br/> `hilink_clients`: 0<br/>`wireless_clients`: 2<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 2<br />`tagged_homeowners_clients`: 1 _// Michael's laptop_<br />`tagged_visitors_clients`: 1 _// Victoria's phone_<br />`untagged_clients`: 0 |
+| `sensor.huawei_mesh_3_clients_primary_router` | `guest_clients`: 0 <br/> `hilink_clients`: 2<br/>`wireless_clients`: 3<br />`lan_clients`: 0<br />`wifi_2_4_clients`: 0<br />`wifi_5_clients`: 3<br />`tagged_homeowners_clients`: 0<br />`tagged_visitors_clients`: 1 _// Eugene's phone_ <br />`untagged_clients`: 2 _// Garage and Living room routers_|

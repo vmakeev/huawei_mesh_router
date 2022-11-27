@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, cast, Callable, Iterable, List
-
-from aiohttp import ClientResponse
+from typing import Any, Callable, Iterable
 
 from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -15,15 +13,27 @@ from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .connected_device import ConnectedDevice
-from .router_info import RouterInfo
+
+from .client.huaweiapi import (
+    HuaweiApi,
+    CONNECTED_VIA_ID_PRIMARY,
+    SWITCH_NFC,
+    SWITCH_WIFI_TWT,
+    SWITCH_WIFI_80211R,
+    FEATURE_NFC,
+    FEATURE_WIFI_80211R,
+    FEATURE_WIFI_TWT,
+)
+from .client.classes import (
+    HuaweiRouterInfo,
+    HuaweiClientDevice,
+    HuaweiDeviceNode,
+    NODE_HILINK_TYPE_DEVICE,
+)
 
 from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
-    SWITCHES_NFC,
-    SWITCHES_WIFI_80211R,
-    SWITCHES_WIFI_TWT,
-    CONNECTED_VIA_ID_PRIMARY
 )
 
 from homeassistant.const import (
@@ -37,14 +47,13 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
 )
 
-from .huaweiapi import HuaweiApi
-
 _LOGGER = logging.getLogger(__name__)
 
 
 class CoordinatorError(Exception):
 
     def __init__(self, message: str) -> None:
+        """Initialize."""
         super().__init__(message)
         self._message = message
 
@@ -54,22 +63,12 @@ class CoordinatorError(Exception):
 
 
 # ---------------------------
-#   _router_data_check_authorized
-# ---------------------------
-def _router_data_check_authorized(response: ClientResponse, result: dict[str, Any]) -> bool:
-    if response.status == 404:
-        return False
-    if result is None or result.get("EmuiVersion", "-") == "-":
-        return False
-    return True
-
-
-# ---------------------------
 #   RoutersWatcher
 # ---------------------------
 class RoutersWatcher:
 
     def __init__(self) -> None:
+        """Initialize."""
         self._known_routers: dict[str, ConnectedDevice] = {}
 
     @staticmethod
@@ -113,6 +112,7 @@ class RoutersWatcher:
 class TagsMap:
 
     def __init__(self, tags_map_storage: Store):
+        """Initialize."""
         self._storage: Store = tags_map_storage
         self._mac_to_tags: dict[str, list[str]] = {}
         self._tag_to_macs: dict[str, list[str]] = {}
@@ -120,9 +120,11 @@ class TagsMap:
 
     @property
     def is_loaded(self) -> bool:
+        """Return true when tags are loaded."""
         return self._is_loaded
 
     async def load(self):
+        """Load the tags from the storage."""
         _LOGGER.debug("Stored tags loading started")
 
         self._mac_to_tags.clear()
@@ -146,12 +148,15 @@ class TagsMap:
         _LOGGER.debug("Stored tags loading finished")
 
     def get_tags(self, mac_address: str) -> list[str]:
+        """Return the tags of the device"""
         return self._mac_to_tags.get(mac_address, [])
 
     def get_all_tags(self) -> Iterable[str]:
+        """Return all known tags."""
         return self._tag_to_macs.keys()
 
     def get_devices(self, tag: str) -> list[str]:
+        """Return the devices having specified tag."""
         return self._tag_to_macs.get(tag, [])
 
 
@@ -163,7 +168,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, tags_map_storage: Store) -> None:
         """Initialize HuaweiController."""
         self._tags_map: TagsMap = TagsMap(tags_map_storage)
-        self._router_info: RouterInfo | None = None
+        self._router_info: HuaweiRouterInfo | None = None
         self._switch_states: dict[str, bool] = {}
         self._connected_devices: dict[str, ConnectedDevice] = {}
 
@@ -205,14 +210,9 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         return self.config_entry.data[CONF_HOST]
 
     @property
-    def router_info(self) -> RouterInfo | None:
+    def router_info(self) -> HuaweiRouterInfo | None:
         """Return the information of the router."""
         return self._router_info
-
-    @property
-    def switches(self) -> dict[str, bool]:
-        """Return the switches states."""
-        return self._switch_states
 
     @property
     def connected_devices(self) -> dict[str, ConnectedDevice]:
@@ -239,6 +239,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def tags_map(self) -> TagsMap:
+        """Return the tags map."""
         return self._tags_map
 
     def _safe_disconnect(self, api: HuaweiApi) -> None:
@@ -254,23 +255,13 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_router_data()
         await self._update_connected_devices()
         await self._update_dependent_apis()
-        await self._update_nfc_switches()
-        await self._update_wifi_basic_switches()
+        await self._update_switches()
         _LOGGER.debug("Update completed")
 
     async def _update_router_data(self) -> None:
         """Asynchronous update of router information."""
         _LOGGER.debug("Updating router data")
-        data = await self._primary_api.get("api/system/deviceinfo", check_authorized=_router_data_check_authorized)
-        self._router_info = RouterInfo(
-            serial_number=data.get("SerialNumber"),
-            software_version=data.get("SoftwareVersion"),
-            hardware_version=data.get("HardwareVersion"),
-            friendly_name=data.get("FriendlyName"),
-            harmony_os_version=data.get('HarmonyOSVersion'),
-            cust_device_name=data.get('custinfo', {}).get('CustDeviceName'),
-            cust_device_type=data.get('custinfo', {}).get('CustDeviceType')
-        )
+        self._router_info = await self._primary_api.get_router_info()
         _LOGGER.debug('Router data updated')
 
     def unload(self) -> None:
@@ -306,77 +297,77 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         self._routersWatcher.watch_for_changes(self, on_router_added, on_router_removed)
 
-    async def _update_nfc_switches(self) -> None:
+    async def _update_switches(self) -> None:
         """Asynchronous update of NFC switch state."""
-        _LOGGER.debug('Updating nfc switch state')
-        data = await self._primary_api.get("api/bsp/nfc_switch")
-        self._switch_states[SWITCHES_NFC] = data.get('nfcSwitch') == 1
-        _LOGGER.debug('Nfc switch (primary router) state updated to %s', self._switch_states[SWITCHES_NFC])
+        _LOGGER.debug('Updating switches states')
 
-        for mac, api in self._dependent_apis.items():
-            device = self._connected_devices.get(mac)
-            if device and device.is_active:
-                try:
-                    data = await api.get("api/bsp/nfc_switch")
-                    self._switch_states[f"{SWITCHES_NFC}_{device.mac}"] = data.get('nfcSwitch') == 1
-                    _LOGGER.debug('Nfc switch (%s) state updated to %s',
-                                  device.name, self._switch_states[f"{SWITCHES_NFC}_{device.mac}"])
-                except Exception as ex:
-                    _LOGGER.error("Can not get NFC switch state for device %s: %s", mac, str(ex))
+        if await self._primary_api.is_feature_available(FEATURE_WIFI_80211R):
+            self._switch_states[SWITCH_WIFI_80211R] = await self._primary_api.get_switch_state(SWITCH_WIFI_80211R)
 
-    async def _update_wifi_basic_switches(self) -> None:
-        """Asynchronous update of Wi-Fi switches state."""
-        _LOGGER.debug('Updating 80211r and TWT switch states')
-        data = await self._primary_api.get("api/ntwk/WlanGuideBasic?type=notshowpassall")
-        self._switch_states[SWITCHES_WIFI_80211R] = data.get('WifiConfig', [{}])[0].get('Dot11REnable')
-        self._switch_states[SWITCHES_WIFI_TWT] = data.get('WifiConfig', [{}])[0].get('TWTEnable')
+        if await self._primary_api.is_feature_available(FEATURE_WIFI_TWT):
+            self._switch_states[SWITCH_WIFI_TWT] = await self._primary_api.get_switch_state(SWITCH_WIFI_TWT)
+
         _LOGGER.debug('80211r switch state updated to %s, TWT switch state updated to %s',
-                      self._switch_states[SWITCHES_WIFI_80211R],
-                      self._switch_states[SWITCHES_WIFI_TWT])
+                      self._switch_states[SWITCH_WIFI_80211R],
+                      self._switch_states[SWITCH_WIFI_TWT])
+
+        if await self._primary_api.is_feature_available(FEATURE_NFC):
+            self._switch_states[SWITCH_NFC] = await self._primary_api.get_switch_state(SWITCH_NFC)
+            _LOGGER.debug('Nfc switch (primary router) state updated to %s', self._switch_states[SWITCH_NFC])
+
+            for mac, api in self._dependent_apis.items():
+                device = self._connected_devices.get(mac)
+                if device and device.is_active:
+                    try:
+                        self._switch_states[f"{SWITCH_NFC}_{device.mac}"] = await api.get_switch_state(SWITCH_NFC)
+                        _LOGGER.debug('Nfc switch (%s) state updated to %s',
+                                      device.name, self._switch_states[f"{SWITCH_NFC}_{device.mac}"])
+                    except Exception as ex:
+                        _LOGGER.error("Can not get NFC switch state for device %s: %s", mac, str(ex))
 
     async def _update_connected_devices(self) -> None:
         """Asynchronous update of connected devices."""
         _LOGGER.debug('Updating connected devices')
-        devices_data = await self._primary_api.get("api/system/HostInfo")
-        devices_topology = cast(List[dict[str, Any]], await self._primary_api.get("api/device/topology"))
+        devices_data = await self._primary_api.get_known_devices()
+        devices_topology = await self._primary_api.get_devices_topology()
 
         """recursively search all HiLink routers with connected devices"""
 
-        def get_mesh_routers(devices: List[dict[str, Any]]) -> Iterable[dict[str, Any]]:
+        def get_mesh_routers(devices: Iterable[HuaweiDeviceNode]) -> Iterable[HuaweiDeviceNode]:
             for candidate in devices:
-                if candidate.get('HiLinkType') == "Device":
+                if candidate.hilink_type == NODE_HILINK_TYPE_DEVICE:
                     yield candidate
-                if 'ConnectedDevices' in candidate:
-                    for connected_router in get_mesh_routers(candidate.get('ConnectedDevices')):
-                        yield connected_router
+                for connected_router in get_mesh_routers(candidate.connected_devices):
+                    yield connected_router
 
         mesh_routers = get_mesh_routers(devices_topology)
 
+        # [MAC_ADDRESS_OF_DEVICE, { "name": PARENT_ROUTER_NAME, "id": PARENT_ROUTER_MAC}]
         devices_to_routers: dict[str, Any] = {}
         for mesh_router in mesh_routers:
             """find same device in devices_data by MAC address"""
             router = next(
                 (
-                    item for item in devices_data if item.get('MACAddress') == mesh_router.get('MACAddress')
+                    item for item in devices_data if item.mac_address == mesh_router.mac_address
                 ),
-                {"ActualName": mesh_router.get('MACAddress'), "MACAddress": mesh_router.get('MACAddress')}
+                # if device information not found
+                HuaweiClientDevice({"ActualName": mesh_router.mac_address, "MACAddress": mesh_router.mac_address})
             )
             """devices_to_routers[device_mac] = router_info """
-            for mesh_connected_device in mesh_router.get('ConnectedDevices', []):
-                if 'MACAddress' in mesh_connected_device:
-                    devices_to_routers[mesh_connected_device['MACAddress']] = {
-                        "name": router.get('ActualName'),
-                        "id": router.get('MACAddress')
-                    }
+            for mesh_connected_device in mesh_router.connected_devices:
+                devices_to_routers[mesh_connected_device.mac_address] = {
+                    "name": router.actual_name,
+                    "id": router.mac_address
+                }
 
         if not self._tags_map.is_loaded:
             await self._tags_map.load()
 
         for device_data in devices_data:
-            mac: str = device_data['MACAddress']
-            host_name: str = device_data.get('HostName', f'device_{mac}')
-            name: str = device_data.get('ActualName', host_name)
-            is_active: bool = device_data.get('Active', False)
+            mac: str = device_data.mac_address
+            host_name: str = device_data.host_name or f'device_{mac}'
+            name: str = device_data.actual_name or host_name
+            is_active: bool = device_data.is_active
             tags = self._tags_map.get_tags(mac)
 
             if mac in self._connected_devices:
@@ -394,12 +385,12 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                                                        })
                 device.update_device_data(name, host_name, True, tags,
                                           connected_via=connected_via.get("name"),
-                                          ip_address=device_data.get('IPAddress'),
-                                          interface_type=device_data.get('InterfaceType'),
-                                          rssi=device_data.get('rssi'),
-                                          is_guest=device_data.get('IsGuest'),
-                                          is_hilink=device_data.get('HiLinkDevice'),
-                                          vendor_class_id=device_data.get('VendorClassID'),
+                                          ip_address=device_data.ip_address,
+                                          interface_type=device_data.interface_type,
+                                          rssi=device_data.rssi,
+                                          is_guest=device_data.is_guest,
+                                          is_hilink=device_data.is_hilink,
+                                          is_router=device_data.is_router,
                                           connected_via_id=connected_via.get("id")
                                           )
             else:
@@ -407,34 +398,21 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.debug('Connected devices updated')
 
-    # ---------------------------
-    #   async_set_value
-    # ---------------------------
-    async def async_set_value(
-            self,
-            path: str,
-            value: dict[str, Any],
-            extra_data: dict[str, Any] | None = None,
-            device_mac: str | None = None
-    ) -> dict[str, Any]:
-        """Change value using Huawei API"""
+    async def is_feature_available(self, feature: str) -> bool:
+        """Return true if specified feature is known and available."""
+        return await self._primary_api.is_feature_available(feature)
 
+    def get_switch_state(self, switch_name: str, device_mac: str | None) -> bool:
+        """Return the state of the specified switch."""
+        key = switch_name if not device_mac else f'{switch_name}_{device_mac}'
+        return self._switch_states.get(key, False)
+
+    async def set_switch_state(self, switch_name: str, state: bool, device_mac: str | None) -> None:
+        """Set state of the specified switch"""
         api = self._primary_api if device_mac is None else self._dependent_apis.get(device_mac)
         if not api:
             raise CoordinatorError(f"Can not find api for device {device_mac}")
 
-        result = await api.post(path, value, extra_data=extra_data)
-        await self.async_request_refresh()
-        return result
-
-    # ---------------------------
-    #   async_get_value
-    # ---------------------------
-    async def async_get_value(self, path: str, device_mac: str | None = None) -> dict[str, Any]:
-        """Retrieve value using Huawei API"""
-
-        api = self._primary_api if device_mac is None else self._dependent_apis.get(device_mac)
-        if not api:
-            raise CoordinatorError(f"Can not find api for device {device_mac}")
-
-        return await api.get(path)
+        await api.set_switch_state(switch_name, state)
+        key = switch_name if not device_mac else f'{switch_name}_{device_mac}'
+        self._switch_states[key] = state
