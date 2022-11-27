@@ -4,7 +4,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 **0.7.6**
 
-- [reboot buttons]((#reboot))
+- [reboot buttons](#reboot)
 - automatic detection of available functions
 - [tagging](#device-tags) connected devices
 - sensors for the [number of connected devices](#number-of-connected-devices) (total and for each individual router)
