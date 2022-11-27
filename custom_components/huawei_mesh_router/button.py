@@ -1,7 +1,6 @@
 """Huawei router switches."""
 import asyncio
 from abc import ABC
-from typing import Any
 import logging
 
 from homeassistant.components.button import ButtonEntity
