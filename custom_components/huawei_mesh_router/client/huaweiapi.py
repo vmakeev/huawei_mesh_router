@@ -10,6 +10,8 @@ SWITCH_NFC = "nfc_switch"
 SWITCH_WIFI_80211R = "wifi_80211r_switch"
 SWITCH_WIFI_TWT = "wifi_twt_switch"
 
+ACTION_REBOOT = "reboot_action"
+
 CONNECTED_VIA_ID_PRIMARY = "primary"
 
 FEATURE_NFC = "feature_nfc"
@@ -249,3 +251,10 @@ class HuaweiApi:
     async def get_devices_topology(self) -> Iterable[HuaweiDeviceNode]:
         """Return the devices topology."""
         return [self._get_device(item) for item in await self._core_api.get(_URL_DEVICE_TOPOLOGY)]
+
+    async def execute_action(self, action_name: str) -> None:
+        """Execute specified action."""
+        if action_name == ACTION_REBOOT:
+            await self._core_api.post('api/service/reboot.cgi', {})
+        else:
+            raise UnsupportedActionError(f"Unsupported action name: {action_name}")

@@ -106,9 +106,9 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
         await super().async_added_to_hass()
         self._handle_coordinator_update()
         if self._device_mac:
-            _LOGGER.debug("%s (%s) added to hass", self._switch_name, self._device_mac)
+            _LOGGER.debug("Switch %s (%s) added to hass", self._switch_name, self._device_mac)
         else:
-            _LOGGER.debug("%s added to hass", self._switch_name)
+            _LOGGER.debug("Switch %s added to hass", self._switch_name)
 
     @callback
     def _handle_coordinator_update(self) -> None:

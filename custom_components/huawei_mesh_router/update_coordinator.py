@@ -398,6 +398,13 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.debug('Connected devices updated')
 
+    def _select_api(self, device_mac: str | None) -> HuaweiApi:
+        """Return the api for the specified device."""
+        api = self._primary_api if device_mac is None else self._dependent_apis.get(device_mac)
+        if not api:
+            raise CoordinatorError(f"Can not find api for device {device_mac}")
+        return api
+
     async def is_feature_available(self, feature: str) -> bool:
         """Return true if specified feature is known and available."""
         return await self._primary_api.is_feature_available(feature)
@@ -408,11 +415,14 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         return self._switch_states.get(key, False)
 
     async def set_switch_state(self, switch_name: str, state: bool, device_mac: str | None) -> None:
-        """Set state of the specified switch"""
-        api = self._primary_api if device_mac is None else self._dependent_apis.get(device_mac)
-        if not api:
-            raise CoordinatorError(f"Can not find api for device {device_mac}")
+        """Set state of the specified switch."""
+        api = self._select_api(device_mac)
 
         await api.set_switch_state(switch_name, state)
         key = switch_name if not device_mac else f'{switch_name}_{device_mac}'
         self._switch_states[key] = state
+
+    async def execute_action(self, action_name: str, device_mac: str | None) -> None:
+        """Perform the specified action."""
+        api = self._select_api(device_mac)
+        await api.execute_action(action_name)
