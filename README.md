@@ -6,10 +6,11 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 ![Maintained](https://img.shields.io/maintenance/yes/2022)
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![HACS Action](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hacs.yml/badge.svg)](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hacs.yml)
 [![Validate with hassfest](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hassfest.yml/badge.svg)](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hassfest.yml)
 
-[![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](LICENSE.md)
+[![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
 
 **0.7.5**
 
