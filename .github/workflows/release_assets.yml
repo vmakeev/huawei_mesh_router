@@ -1,0 +1,19 @@
+name: "Release assets"
+
+on:
+  release:
+    types: [published]
+    
+jobs:
+  artifacts:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Check out repository"
+        uses: actions/checkout@v2
+      - name: "Zip component dir"
+        run: |
+          zip -r ./custom_components.zip ./custom_components      
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: custom_components.zip
