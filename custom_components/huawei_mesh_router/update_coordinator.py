@@ -301,27 +301,30 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         """Asynchronous update of NFC switch state."""
         _LOGGER.debug('Updating switches states')
 
+
+        
         if await self._primary_api.is_feature_available(FEATURE_WIFI_80211R):
-            self._switch_states[SWITCH_WIFI_80211R] = await self._primary_api.get_switch_state(SWITCH_WIFI_80211R)
+            state = await self._primary_api.get_switch_state(SWITCH_WIFI_80211R)            
+            self._switch_states[SWITCH_WIFI_80211R] = state
+            _LOGGER.debug('80211r switch state updated to %s', state)
 
         if await self._primary_api.is_feature_available(FEATURE_WIFI_TWT):
-            self._switch_states[SWITCH_WIFI_TWT] = await self._primary_api.get_switch_state(SWITCH_WIFI_TWT)
-
-        _LOGGER.debug('80211r switch state updated to %s, TWT switch state updated to %s',
-                      self._switch_states[SWITCH_WIFI_80211R],
-                      self._switch_states[SWITCH_WIFI_TWT])
+            state = await self._primary_api.get_switch_state(SWITCH_WIFI_TWT)
+            self._switch_states[SWITCH_WIFI_TWT] = state
+            _LOGGER.debug('TWT switch state updated to %s', state)
 
         if await self._primary_api.is_feature_available(FEATURE_NFC):
-            self._switch_states[SWITCH_NFC] = await self._primary_api.get_switch_state(SWITCH_NFC)
-            _LOGGER.debug('Nfc switch (primary router) state updated to %s', self._switch_states[SWITCH_NFC])
+            state = await self._primary_api.get_switch_state(SWITCH_NFC)
+            self._switch_states[SWITCH_NFC] = state
+            _LOGGER.debug('Nfc switch (primary router) state updated to %s', state)
 
             for mac, api in self._dependent_apis.items():
                 device = self._connected_devices.get(mac)
                 if device and device.is_active:
                     try:
-                        self._switch_states[f"{SWITCH_NFC}_{device.mac}"] = await api.get_switch_state(SWITCH_NFC)
-                        _LOGGER.debug('Nfc switch (%s) state updated to %s',
-                                      device.name, self._switch_states[f"{SWITCH_NFC}_{device.mac}"])
+                        state = await api.get_switch_state(SWITCH_NFC)
+                        self._switch_states[f"{SWITCH_NFC}_{device.mac}"] = state
+                        _LOGGER.debug('Nfc switch (%s) state updated to %s', device.name, state)
                     except Exception as ex:
                         _LOGGER.error("Can not get NFC switch state for device %s: %s", mac, str(ex))
 

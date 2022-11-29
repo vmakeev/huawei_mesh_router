@@ -1,29 +1,26 @@
-# Control Huawei Mesh routers from Home Assistant
+# Control Huawei mesh routers from Home Assistant
 
 Home Assistant custom component for control Huawei mesh routers over LAN.
+
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 ![Maintained](https://img.shields.io/maintenance/yes/2022)
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![HACS Action](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hacs.yml/badge.svg)](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hacs.yml)
-[![Validate with hassfest](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hassfest.yml/badge.svg)](https://github.com/vmakeev/huawei_mesh_router/actions/workflows/hassfest.yml)
+## Key features
 
-[![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
-
-**0.7.5**
-
+- obtaining information about all routers and connected devices in the entire mesh network:
+  - connected devices [tracking](#devices-tracking) and [tagging](#device-tags)
+  - device connection parameters (frequency, signal strength, guest and hilink devices)
+  - name of the specific router to which the device is connected
+  - [number of connected devices](#number-of-connected-devices) (total and for each individual router)
+- hardware and firmware version of the primary router
+- control of the [NFC](#nfc-switch) (OneHop Connect) on each router separately
+- control of the [Fast Roaming](#wi-fi-80211r-switch) function (802.11r)
+- control of the [Target Wake Time](#wi-fi-twt-switch) (reduce power consumption of Wi-Fi 6 devices in sleep mode)
 - automatic detection of available functions
-- tagging connected devices
-- sensors for the number of connected devices (total and for each individual router)
-- enable/disable NFC on each router separately
-- enable/disable TWT (reduce power consumption of Wi-Fi 6 devices in sleep mode)
-- control of the fast roaming function (802.11r)
-- connected devices tracking
-- obtaining of the specific router to which the device is connected
-- obtaining of device connection parameters (frequency, signal strength, guest and hilink devices)
-- hardware and firmware version of the router
 
 ## Supported models
 
@@ -39,7 +36,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 ### Manual
 
-Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant.
+Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant. The final path to folder should look like this: `<home-assistant-config-folder>/custom_components/huawei_mesh_router`
 
 ### HACS
 
@@ -110,6 +107,34 @@ Each sensor exposes the following attributes:
 | `wifi_5_clients`             | Number of devices connected to Wi-Fi 5 GHz                   |
 | `tagged_<tag_name>_clients`  | Number of connected devices with a specific [tag](#device-tags) `<tag_name>` |
 | `untagged_clients`           | Number of connected devices without any [tags](#device-tags) |
+
+## Switches
+
+### NFC switch
+
+Allows you to manage the [OneHop connect](https://consumer.huawei.com/ph/support/content/en-us11307411/) function on each router in the mesh network.
+
+The switches will not be added to Home Assistant if the router does not support NFC.
+
+Supported devices always have the following switch:
+* `switch.<integration_name>_nfc_primary_router`
+
+Also, one switch is created for each additional router in the mesh network:
+* `switch.<integration_name>_nfc_<router_name>`
+
+_Note: when additional routers are disconnected from the network, their personal switches are automatically deleted._
+
+### Wi-Fi 802.11r switch
+
+Allows you to manage the fast roaming feature ([Wi-Fi 802.11r](https://support.huawei.com/enterprise/en/doc/EDOC1000178191/f0c65b61/80211r-fast-roaming))
+
+The switch will not be added to Home Assistant if the router does not support Wi-Fi 802.11r.
+
+### Wi-Fi TWT switch
+
+Allows you to manage the Wi-Fi Target Wake Time ([TWT](https://forum.huawei.com/enterprise/en/what-is-twt-in-wifi-devices/thread/623758-869)) feature
+
+The switch will not be added to Home Assistant if the router does not support Wi-Fi TWT.
 
 ## Customization
 
