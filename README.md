@@ -1,27 +1,27 @@
-# Control Huawei Mesh routers from Home Assistant
+# Control Huawei mesh routers from Home Assistant
 
 Home Assistant custom component for control Huawei mesh routers over LAN.
+
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 ![Maintained](https://img.shields.io/maintenance/yes/2022)
 
-[![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](LICENSE.md)
+## Key features
 
-**0.7.6**
-
+- obtaining information about all routers and connected devices in the entire mesh network:
+  - connected devices [tracking](#devices-tracking) and [tagging](#device-tags)
+  - device connection parameters (frequency, signal strength, guest and hilink devices)
+  - name of the specific router to which the device is connected
+  - [number of connected devices](#number-of-connected-devices) (total and for each individual router)
+- hardware and firmware version of the primary router
+- control of the [NFC](#nfc-switch) (OneHop Connect) on each router separately
+- control of the [Fast Roaming](#wi-fi-80211r-switch) function (802.11r)
+- control of the [Target Wake Time](#wi-fi-twt-switch) (reduce power consumption of Wi-Fi 6 devices in sleep mode)
 - [reboot buttons](#reboot)
 - automatic detection of available functions
-- [tagging](#device-tags) connected devices
-- sensors for the [number of connected devices](#number-of-connected-devices) (total and for each individual router)
-- enable/disable [NFC](#nfc-switch) on each router separately
-- enable/disable [TWT](#wi-fi-twt-switch) (reduce power consumption of Wi-Fi 6 devices in sleep mode)
-- control of the [fast roaming](#wi-fi-80211r-switch) function (802.11r)
-- connected devices [tracking](#devices-tracking)
-- obtaining of the specific router to which the device is connected
-- obtaining of device connection parameters (frequency, signal strength, guest and hilink devices)
-- hardware and firmware version of the router
-- obtaining information about all routers and connected devices in the entire mesh network
 
 ## Supported models
 
@@ -37,7 +37,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 ### Manual
 
-Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant.
+Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant. The final path to folder should look like this: `<home-assistant-config-folder>/custom_components/huawei_mesh_router`
 
 ### HACS
 
