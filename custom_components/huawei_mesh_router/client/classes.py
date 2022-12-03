@@ -1,11 +1,16 @@
+"""Huawei api classes."""
+
 from __future__ import annotations
-from typing import Any, Dict, Iterable
+
 from dataclasses import dataclass
+from typing import Any, Dict, Iterable, TypeAlias
 
 VENDOR_CLASS_ID_ROUTER = "router"
 
 NODE_HILINK_TYPE_DEVICE = "Device"
 NODE_HILINK_TYPE_NONE = "None"
+
+MAC_ADDR: TypeAlias = str
 
 
 # ---------------------------
@@ -38,7 +43,7 @@ class HuaweiClientDevice:
         return self._data.get(property_name)
 
     @property
-    def mac_address(self) -> str | None:
+    def mac_address(self) -> MAC_ADDR | None:
         """Return the mac address of the device."""
         return self._data.get("MACAddress")
 
@@ -97,14 +102,14 @@ class HuaweiClientDevice:
 # ---------------------------
 class HuaweiDeviceNode:
 
-    def __init__(self, mac: str, hilink_type: str | None):
+    def __init__(self, mac: MAC_ADDR, hilink_type: str | None):
         """Initialize."""
         self._mac = mac
         self._hilink_type = hilink_type
         self._connected_devices: list[HuaweiDeviceNode] = []
 
     @property
-    def mac_address(self) -> str:
+    def mac_address(self) -> MAC_ADDR:
         """Return the mac address of the device."""
         return self._mac
 

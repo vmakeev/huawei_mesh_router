@@ -1,14 +1,19 @@
-from aiohttp import ClientResponse
+"""Huawei api extended functions."""
+
+from functools import wraps
 import logging
 from typing import Any, Iterable
-from functools import wraps
 
-from .coreapi import HuaweiCoreApi, ApiCallError, APICALL_ERRCAT_UNAUTHORIZED
-from .classes import HuaweiRouterInfo, HuaweiClientDevice, HuaweiDeviceNode
+from aiohttp import ClientResponse
+
+from .classes import HuaweiClientDevice, HuaweiDeviceNode, HuaweiRouterInfo
+from .coreapi import APICALL_ERRCAT_UNAUTHORIZED, ApiCallError, HuaweiCoreApi
 
 SWITCH_NFC = "nfc_switch"
 SWITCH_WIFI_80211R = "wifi_80211r_switch"
 SWITCH_WIFI_TWT = "wifi_twt_switch"
+
+ACTION_REBOOT = "reboot_action"
 
 CONNECTED_VIA_ID_PRIMARY = "primary"
 
@@ -22,6 +27,7 @@ _URL_DEVICE_TOPOLOGY = "api/device/topology"
 _URL_SWITCH_NFC = "api/bsp/nfc_switch"
 _URL_SWITCH_WIFI_80211R = "api/ntwk/WlanGuideBasic?type=notshowpassall"
 _URL_SWITCH_WIFI_TWT = "api/ntwk/WlanGuideBasic?type=notshowpassall"
+_URL_REBOOT = "api/service/reboot.cgi"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -182,7 +188,7 @@ class HuaweiApi:
 
         return HuaweiRouterInfo(
             name=data.get("FriendlyName"),
-            model=data.get("cust_device_name"),
+            model=data.get("custinfo", {}).get('CustDeviceName'),
             serial_number=data.get("SerialNumber"),
             software_version=data.get("SoftwareVersion"),
             hardware_version=data.get("HardwareVersion"),
@@ -249,3 +255,10 @@ class HuaweiApi:
     async def get_devices_topology(self) -> Iterable[HuaweiDeviceNode]:
         """Return the devices topology."""
         return [self._get_device(item) for item in await self._core_api.get(_URL_DEVICE_TOPOLOGY)]
+
+    async def execute_action(self, action_name: str) -> None:
+        """Execute specified action."""
+        if action_name == ACTION_REBOOT:
+            await self._core_api.post(_URL_REBOOT, {})
+        else:
+            raise UnsupportedActionError(f"Unsupported action name: {action_name}")

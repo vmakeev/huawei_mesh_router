@@ -20,6 +20,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 - control of the [NFC](#nfc-switch) (OneHop Connect) on each router separately
 - control of the [Fast Roaming](#wi-fi-80211r-switch) function (802.11r)
 - control of the [Target Wake Time](#wi-fi-twt-switch) (reduce power consumption of Wi-Fi 6 devices in sleep mode)
+- [reboot buttons](#reboot)
 - automatic detection of available functions
 
 ## Supported models
@@ -28,7 +29,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 |------------------------------------------------------------------------------------|--------|-----------|-----------------------------------------|
 | [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | All features are available              |
 | [Huawei WiFi AX3 Dual-core](https://consumer.huawei.com/en/routers/ax3-dual-core/) | WS7100 |    Yes    | No NFC switches (unsupported by router) |
-| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |    No     | ---                                     |
+| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |    Yes    | ---                                     |
 | [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     | ---                                     |
 | Other routers with HarmonyOS                                                       | ------ |    No     | Will most likely work                   
 
@@ -52,19 +53,20 @@ By default, Huawei mesh routers use the username `admin`, although it is not dis
 
 Each tracked device exposes the following attributes:
 
-|    Attribute     |                  Description                 | Only when connected |
-|------------------|----------------------------------------------|---------------------|
-| `source_type`    | Always `router`                              | No                  |
-| `ip`             | Device IP address                            | Yes                 |
-| `mac`            | MAC address of the device                    | No                  |
-| `hostname`       | Device name according to the device itself   | No                  |
-| `connected_via`  | The name of the router through which the connection was made. For the primary router - `Huawei Mesh 3` (or your configuration name) | Yes |
-| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`) | Yes          |
-| `rssi`           | Signal strength for wireless connections     | Yes                 |
-| `is_guest`       | Is the device connected to the guest network | Yes                 |
-| `is_hilink`      | Is the device connected via HiLink (usually other routers) | Yes   |
-| `tags`           | List of [tags](#device-tags) that marked the device        | No    |
-| `friendly_name`  | Device name provided by the router           | No                  |
+|    Attribute     |                           Description                         | Only when connected |
+|------------------|---------------------------------------------------------------|---------------------|
+| `source_type`    | Always `router`                                               | No                  |
+| `ip`             | Device IP address                                             | Yes                 |
+| `mac`            | MAC address of the device                                     | No                  |
+| `hostname`       | Device name according to the device itself                    | No                  |
+| `connected_via`  | The name of the router through which the connection was made. | Yes                 |
+| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`)           | Yes                 |
+| `rssi`           | Signal strength for wireless connections                      | Yes                 |
+| `is_guest`       | Is the device connected to the guest network                  | Yes                 |
+| `is_hilink`      | Is the device connected via HiLink                            | Yes                 |
+| `is_router`      | Is the device are router                                      | Yes                 |
+| `tags`           | List of [tags](#device-tags) that marked the device           | No                  |
+| `friendly_name`  | Device name provided by the router                            | No                  |
 
 Tracked device names, including routers, can be changed in [your mesh control interface](http://192.168.3.1/html/index.html#/devicecontrol), after which the component will update them in Home Assistant
 
@@ -87,26 +89,40 @@ My phone: Rssi **30** *via* **Kitchen router** (**5GHz**)
 The component provides the ability to obtain the number of connected devices both to the entire mesh network and to specific routers using sensors.
 
 There are two sensors that are always present:
-* `sensor.<integration_name>_clients_total` - total number of devices connected to the mesh network
+* `sensor.<integration_name>_total_clients_primary_router` - total number of devices connected to the mesh network
 * `sensor.<integration_name>_clients_primary_router` - number of devices connected to the primary router
 
 Also, one sensor is created for each additional router in the mesh network:
 * `sensor.<integration_name>_clients_<router_name>`
 
-_Note: when additional routers are disconnected from the network, their personal sensors are automatically deleted._
+_Note: Sensors for additional routers are located in their own devices._
 
 Each sensor exposes the following attributes:
 
-|         Attribute            |                         Description                          |
-|------------------------------|--------------------------------------------------------------|
-| `guest_clients`              | Number of devices connected to the guest network             |
-| `hilink_clients`             | Number of devices connected via HiLink                       |
-| `wireless_clients`           | Number of devices connected wirelessly                       |
-| `lan_clients`                | Number of devices connected by cable                         |
-| `wifi_2_4_clients`           | Number of devices connected to Wi-Fi 2.4 GHz                 |
-| `wifi_5_clients`             | Number of devices connected to Wi-Fi 5 GHz                   |
+|         Attribute            |                                 Description                                  |
+|------------------------------|------------------------------------------------------------------------------|
+| `guest_clients`              | Number of devices connected to the guest network                             |
+| `hilink_clients`             | Number of devices connected via HiLink                                       |
+| `wireless_clients`           | Number of devices connected wirelessly                                       |
+| `lan_clients`                | Number of devices connected by cable                                         |
+| `wifi_2_4_clients`           | Number of devices connected to Wi-Fi 2.4 GHz                                 |
+| `wifi_5_clients`             | Number of devices connected to Wi-Fi 5 GHz                                   |
 | `tagged_<tag_name>_clients`  | Number of connected devices with a specific [tag](#device-tags) `<tag_name>` |
-| `untagged_clients`           | Number of connected devices without any [tags](#device-tags) |
+| `untagged_clients`           | Number of connected devices without any [tags](#device-tags)                 |
+
+## Buttons
+
+### Reboot
+
+Allows you to reboot the selected router.
+
+There is one button that is always present:
+* `button.<integration_name>_reboot_primary_router`
+
+Also, one button is created for each additional router in the mesh network:
+* `button.<integration_name>_reboot_<router_name>`
+
+_Note: Buttons for additional routers are located in their own devices._
 
 ## Switches
 
@@ -116,13 +132,13 @@ Allows you to manage the [OneHop connect](https://consumer.huawei.com/ph/support
 
 The switches will not be added to Home Assistant if the router does not support NFC.
 
-Supported devices always have the following switch:
+Primary router have the following switch:
 * `switch.<integration_name>_nfc_primary_router`
 
-Also, one switch is created for each additional router in the mesh network:
+Also, one switch is created for each supported additional router in the mesh network:
 * `switch.<integration_name>_nfc_<router_name>`
 
-_Note: when additional routers are disconnected from the network, their personal switches are automatically deleted._
+_Note: Switches for additional routers are located in their own devices._
 
 ### Wi-Fi 802.11r switch
 
@@ -189,7 +205,7 @@ Example:
 
 **Usage example:**
 
-|  Tag name    |          Tagged Devices           |
+|   Tag name   |          Tagged Devices           |
 |--------------|-----------------------------------|
 |  homeowners  | Michael's phone, Michael's laptop |
 |  visitors    | Victoria's phone, Eugene's phone  |

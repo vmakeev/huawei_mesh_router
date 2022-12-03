@@ -1,20 +1,12 @@
 """Huawei Router integration."""
 
-import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.storage import Store
 
-from .const import (
-    STORAGE_VERSION,
-    DOMAIN,
-    PLATFORMS,
-    ATTR_MANUFACTURER
-)
+from .const import DOMAIN, PLATFORMS, STORAGE_VERSION
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = config_validation.removed(DOMAIN, raise_if_present=False)
 
@@ -70,5 +62,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     """Unload entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
     if unload_ok:
-        hass.data[DOMAIN].pop(config_entry.entry_id)
+        coordinator = hass.data[DOMAIN].pop(config_entry.entry_id)
+        if coordinator and isinstance(coordinator, HuaweiControllerDataUpdateCoordinator):
+            coordinator.unload()
     return unload_ok

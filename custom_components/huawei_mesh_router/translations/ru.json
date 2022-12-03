@@ -1,10 +1,9 @@
 {
     "config": {
-        "title": "Роутер Huawei Mesh 3",
+        "title": "Mesh роутер Huawei",
         "step": {
             "user": {
-                "title": "Роутер Huawei Mesh 3",
-                "description": "Настройка интеграции маршрутизатора Huawei Mesh 3.",
+                "description": "Настройка интеграции mesh маршрутизатора Huawei.",
                 "data": {
                     "name": "Название интеграции",
                     "host": "Адрес маршрутизатора",

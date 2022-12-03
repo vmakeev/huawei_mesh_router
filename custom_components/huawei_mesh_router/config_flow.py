@@ -3,34 +3,32 @@
 import logging
 
 import voluptuous as vol
-from homeassistant.config_entries import (
-    CONN_CLASS_LOCAL_POLL,
-    ConfigFlow
-)
+
+from homeassistant.config_entries import CONN_CLASS_LOCAL_POLL, ConfigFlow
 from homeassistant.const import (
-    CONF_NAME,
     CONF_HOST,
-    CONF_PORT,
-    CONF_USERNAME,
+    CONF_NAME,
     CONF_PASSWORD,
-    CONF_SSL,
-    CONF_VERIFY_SSL,
+    CONF_PORT,
     CONF_SCAN_INTERVAL,
+    CONF_SSL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
 )
 from homeassistant.core import callback
+
 from .client.coreapi import AuthenticationError
 from .client.huaweiapi import HuaweiApi
-
 from .const import (
-    DOMAIN,
     DEFAULT_HOST,
-    DEFAULT_USER,
-    DEFAULT_PORT,
-    DEFAULT_SSL,
-    DEFAULT_PASS,
     DEFAULT_NAME,
-    DEFAULT_VERIFY_SSL,
+    DEFAULT_PASS,
+    DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SSL,
+    DEFAULT_USER,
+    DEFAULT_VERIFY_SSL,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
