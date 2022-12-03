@@ -132,7 +132,7 @@ Allows you to manage the [OneHop connect](https://consumer.huawei.com/ph/support
 
 The switches will not be added to Home Assistant if the router does not support NFC.
 
-SPrimary router have the following switch:
+Primary router have the following switch:
 * `switch.<integration_name>_nfc_primary_router`
 
 Also, one switch is created for each supported additional router in the mesh network:
