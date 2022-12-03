@@ -3,7 +3,6 @@
         "title": "Huawei Mesh Router",
         "step": {
             "user": {
-                "title": "Huawei Mesh Router",
                 "description": "Huawei mesh router setup.",
                 "data": {
                     "name": "Integration name",

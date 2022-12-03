@@ -3,7 +3,6 @@
         "title": "Mesh роутер Huawei",
         "step": {
             "user": {
-                "title": "Mesh роутер Huawei",
                 "description": "Настройка интеграции mesh маршрутизатора Huawei.",
                 "data": {
                     "name": "Название интеграции",
