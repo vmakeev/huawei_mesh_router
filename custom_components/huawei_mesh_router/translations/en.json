@@ -1,10 +1,10 @@
 {
     "config": {
-        "title": "Huawei Mesh 3",
+        "title": "Huawei Mesh Router",
         "step": {
             "user": {
-                "title": "Huawei Mesh 3",
-                "description": "Huawei Mesh 3 router setup.",
+                "title": "Huawei Mesh Router",
+                "description": "Huawei mesh router setup.",
                 "data": {
                     "name": "Integration name",
                     "host": "Host",

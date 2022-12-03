@@ -1,17 +1,21 @@
+"""Huawei Mesh Router shared constants."""
+
+from typing import Final
+
 from homeassistant.const import Platform
 
-DOMAIN = "huawei_mesh_router"
+DOMAIN: Final = "huawei_mesh_router"
 
-STORAGE_VERSION = 1
+STORAGE_VERSION: Final = 1
 
-DEFAULT_HOST = "192.168.3.1"
-DEFAULT_USER = "admin"
-DEFAULT_PORT = 80
-DEFAULT_SSL = False
-DEFAULT_PASS = ""
-DEFAULT_NAME = "Huawei Mesh 3"
-DEFAULT_VERIFY_SSL = False
-DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_HOST: Final = "192.168.3.1"
+DEFAULT_USER: Final = "admin"
+DEFAULT_PORT: Final = 80
+DEFAULT_SSL: Final = False
+DEFAULT_PASS: Final = ""
+DEFAULT_NAME: Final = "Huawei Router"
+DEFAULT_VERIFY_SSL: Final = False
+DEFAULT_SCAN_INTERVAL: Final = 30
 
-ATTR_MANUFACTURER = "Huawei"
-PLATFORMS = [Platform.SWITCH, Platform.DEVICE_TRACKER, Platform.SENSOR, Platform.BUTTON]
+ATTR_MANUFACTURER: Final = "Huawei"
+PLATFORMS: Final = [Platform.SWITCH, Platform.DEVICE_TRACKER, Platform.SENSOR, Platform.BUTTON]

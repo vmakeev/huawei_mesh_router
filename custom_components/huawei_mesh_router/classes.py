@@ -1,7 +1,12 @@
-from typing import Any, Dict, Iterable, Tuple
-from homeassistant.backports.enum import StrEnum
-from .client.classes import VENDOR_CLASS_ID_ROUTER
+"""Huawei Mesh Router component classes."""
 
+from typing import Any, Dict, Iterable, Tuple
+
+from homeassistant.backports.enum import StrEnum
+
+from .client.classes import MAC_ADDR
+
+DEVICE_TAG = str
 
 # ---------------------------
 #   HuaweiInterfaceType
@@ -20,13 +25,13 @@ class ConnectedDevice:
     def __init__(self,
                  name: str,
                  host_name: str,
-                 mac: str,
+                 mac: MAC_ADDR,
                  is_active: bool,
                  tags: list[str],
                  **kwargs) -> None:
         self._name: str = name
         self._host_name: str = host_name
-        self._mac: str = mac
+        self._mac: MAC_ADDR = mac
         self._is_active: bool = is_active
         self._tags: list[str] = tags
         self._data: Dict = kwargs or {}
@@ -40,7 +45,7 @@ class ConnectedDevice:
         self._name: str = name
         self._host_name: str = host_name
         self._is_active: bool = is_active
-        self._tags: list[str] = tags
+        self._tags: list[DEVICE_TAG] = tags
         self._data: Dict = kwargs or {}
 
     def __str__(self) -> str:
@@ -65,7 +70,7 @@ class ConnectedDevice:
         return self._data.get("ip_address")
 
     @property
-    def mac(self) -> str:
+    def mac(self) -> MAC_ADDR:
         """Return the mac address of the device."""
         return self._mac
 
@@ -100,7 +105,7 @@ class ConnectedDevice:
         return self._data.get("is_router", False)
 
     @property
-    def tags(self) -> list[str]:
+    def tags(self) -> list[DEVICE_TAG]:
         """Return device tags list."""
         return self._tags
 

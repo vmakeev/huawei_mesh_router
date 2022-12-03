@@ -1,17 +1,19 @@
 """Support for Huawei routers as device tracker."""
-import logging
 
+from __future__ import annotations
+
+import logging
 from typing import Any
+
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
-from homeassistant.components.device_tracker.const import (
-    SOURCE_TYPE_ROUTER,
-)
+from homeassistant.components.device_tracker.const import SOURCE_TYPE_ROUTER
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .connected_device import ConnectedDevice
 
+from .classes import ConnectedDevice
+from .client.classes import MAC_ADDR
 from .const import DOMAIN
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
@@ -29,7 +31,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up device tracker for Huawei component."""
     coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
-    tracked: dict[str, HuaweiTracker] = {}
+    tracked: dict[MAC_ADDR, HuaweiTracker] = {}
 
     @callback
     def coordinator_updated():
@@ -45,10 +47,13 @@ async def async_setup_entry(
 #   update_items
 # ---------------------------
 @callback
-def update_items(coordinator: HuaweiControllerDataUpdateCoordinator,
-                 async_add_entities, tracked) -> None:
+def update_items(
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        async_add_entities: AddEntitiesCallback,
+        tracked: dict[MAC_ADDR, HuaweiTracker]
+) -> None:
     """Update tracked device state from the hub."""
-    new_tracked = []
+    new_tracked: list[HuaweiTracker] = []
     for mac, device in coordinator.connected_devices.items():
         if mac not in tracked:
             tracked[mac] = HuaweiTracker(device, coordinator)
@@ -90,7 +95,7 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
         return self.device.host_name
 
     @property
-    def mac_address(self) -> str:
+    def mac_address(self) -> MAC_ADDR:
         """Return the mac address of the client."""
         return self.device.mac
 

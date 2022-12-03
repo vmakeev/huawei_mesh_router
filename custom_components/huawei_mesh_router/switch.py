@@ -1,42 +1,114 @@
 """Huawei router switches."""
-import asyncio
+from __future__ import annotations
+
 from abc import ABC
-from typing import Any
+import asyncio
 import logging
+from typing import Any, Final
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.helpers.entity_registry import EntityRegistry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import generate_entity_id
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import (
-    DOMAIN
-)
-from .connected_device import ConnectedDevice
-from .update_coordinator import (HuaweiControllerDataUpdateCoordinator, RoutersWatcher)
+
+from .classes import ConnectedDevice
+from .client.classes import MAC_ADDR
 from .client.huaweiapi import (
+    FEATURE_NFC,
+    FEATURE_WIFI_80211R,
+    FEATURE_WIFI_TWT,
     SWITCH_NFC,
     SWITCH_WIFI_80211R,
     SWITCH_WIFI_TWT,
-    FEATURE_NFC,
-    FEATURE_WIFI_80211R,
-    FEATURE_WIFI_TWT
 )
-from homeassistant.core import callback, HomeAssistant
+from .const import DOMAIN
+from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 
 _LOGGER = logging.getLogger(__name__)
+
+_FUNCTION_DISPLAYED_NAME_NFC: Final = "NFC"
+_FUNCTION_UID_NFC: Final = "switch_nfc"
+
+_FUNCTION_DISPLAYED_NAME_WIFI_802_11_R: Final = "WiFi 802.11r"
+_FUNCTION_UID_WIFI_802_11_R: Final = "switch_wifi_802_11_r"
+
+_FUNCTION_DISPLAYED_NAME_WIFI_TWT: Final = "WiFi 6 TWT"
+_FUNCTION_ID_WIFI_TWT: Final = "switch_wifi_twt"
+
+ENTITY_DOMAIN: Final = "switch"
+ENTITY_ID_FORMAT: Final = ENTITY_DOMAIN + ".{}"
+
+
+# ---------------------------
+#   _generate_switch_name
+# ---------------------------
+def _generate_switch_name(
+        switch_function_displayed_name: str,
+        device_name: str
+) -> str:
+    return f"{device_name} {switch_function_displayed_name}"
+
+
+# ---------------------------
+#   _generate_switch_id
+# ---------------------------
+def _generate_switch_id(
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        sensor_function_displayed_name: str,
+        device_name: str
+) -> str:
+    preferred_id = f"{coordinator.name} {sensor_function_displayed_name} {device_name}"
+    return generate_entity_id(ENTITY_ID_FORMAT, preferred_id, hass=coordinator.hass)
+
+
+# ---------------------------
+#   _generate_switch_unique_id
+# ---------------------------
+def _generate_switch_unique_id(
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        switch_function_id: str,
+        device_mac: MAC_ADDR | None = None
+) -> str:
+    prefix = coordinator.unique_id
+    suffix = coordinator.get_router_info().serial_number if not device_mac else device_mac
+    return f"{prefix}_{switch_function_id}_{suffix.lower()}"
+
+
+# ---------------------------
+#   _add_nfc_if_available
+# ---------------------------
+async def _add_nfc_if_available(
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch],
+        mac: MAC_ADDR,
+        router: ConnectedDevice,
+        async_add_entities: AddEntitiesCallback
+) -> None:
+    if await coordinator.is_feature_available(FEATURE_NFC, mac):
+        if not known_nfc_switches.get(mac):
+            entity = HuaweiNfcSwitch(coordinator, router)
+            async_add_entities([entity])
+            known_nfc_switches[mac] = entity
+    else:
+        _LOGGER.debug("Feature '%s' is not supported at %s", FEATURE_NFC, mac)
 
 
 # ---------------------------
 #   async_setup_entry
 # ---------------------------
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities) -> None:
+async def async_setup_entry(
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        async_add_entities: AddEntitiesCallback
+) -> None:
     """Set up switches for Huawei Router component."""
     coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    switches = []
+    switches: list[HuaweiSwitch] = []
 
-    is_nfc_available = await coordinator.is_feature_available(FEATURE_NFC)
+    is_nfc_available: bool = await coordinator.is_feature_available(FEATURE_NFC)
 
     if is_nfc_available:
         switches.append(HuaweiNfcSwitch(coordinator, None))
@@ -55,51 +127,40 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     async_add_entities(switches)
 
-    if is_nfc_available:
-        watcher: RoutersWatcher = RoutersWatcher()
+    watcher: RoutersWatcher = RoutersWatcher()
+    known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
 
-        @callback
-        def on_router_added(_, router: ConnectedDevice) -> None:
-            """When a new mesh router is detected."""
-            entity = HuaweiNfcSwitch(coordinator, router)
-            async_add_entities([entity])
+    @callback
+    def on_router_added(device_mac: MAC_ADDR, router: ConnectedDevice) -> None:
+        """When a new mesh router is detected."""
+        hass.async_add_job(
+            _add_nfc_if_available(coordinator, known_nfc_switches, device_mac, router, async_add_entities)
+        )
 
-        @callback
-        def on_router_removed(er: EntityRegistry, mac: str, _) -> None:
-            """When a known mesh router becomes unavailable."""
-            unique_id = f"nfc_{mac}_{coordinator.router_info.serial_number}"
-            entity_id = er.async_get_entity_id(Platform.SWITCH, DOMAIN, unique_id)
-            if entity_id:
-                er.async_remove(entity_id)
-            else:
-                _LOGGER.warning("Can not remove unavailable switch '%s': entity id not found.", unique_id)
+    @callback
+    def coordinator_updated() -> None:
+        """Update the status of the device."""
+        watcher.look_for_changes(coordinator, on_router_added)
 
-        @callback
-        def coordinator_updated() -> None:
-            """Update the status of the device."""
-            watcher.watch_for_changes(coordinator, on_router_added, on_router_removed)
-
-        config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
-        coordinator_updated()
+    config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
 
 
 # ---------------------------
 #   HuaweiSwitch
 # ---------------------------
 class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SwitchEntity, ABC):
-    _update_url: str
 
     def __init__(
             self,
             coordinator: HuaweiControllerDataUpdateCoordinator,
             switch_name: str,
-            device_mac: str | None
+            device_mac: MAC_ADDR | None
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self._switch_name: str = switch_name
-        self._device_mac: str = device_mac
-        self._attr_device_info = coordinator.device_info
+        self._device_mac: MAC_ADDR = device_mac
+        self._attr_device_info = coordinator.get_device_info(device_mac)
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -110,6 +171,11 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
         else:
             _LOGGER.debug("Switch %s added to hass", self._switch_name)
 
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.is_router_online(self._device_mac)
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
@@ -118,7 +184,7 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
     @property
     def is_on(self) -> bool:
         """Return current status."""
-        return self.coordinator.get_switch_state(self._switch_name, self._device_mac)
+        return self.coordinator.get_switch_state(self._switch_name, self._device_mac) or False
 
     async def __go_to_state(self, state: bool):
         """Perform transition to the specified state."""
@@ -159,8 +225,20 @@ class HuaweiNfcSwitch(HuaweiSwitch):
         """Initialize."""
         super().__init__(coordinator, SWITCH_NFC, device.mac if device else None)
 
-        self._attr_name = f"{self.coordinator.name} Nfc ({device.name if device else 'primary router'})"
-        self._attr_unique_id = f"nfc_{'' if not device else device.mac + '_'}{self.coordinator.router_info.serial_number}"
+        self._attr_name = _generate_switch_name(
+            _FUNCTION_DISPLAYED_NAME_NFC,
+            device.name if device else coordinator.primary_router_name
+        )
+        self._attr_unique_id = _generate_switch_unique_id(
+            coordinator,
+            _FUNCTION_UID_NFC,
+            device.mac if device else None
+        )
+        self.entity_id = _generate_switch_id(
+            coordinator,
+            _FUNCTION_DISPLAYED_NAME_NFC,
+            device.name if device else coordinator.primary_router_name
+        )
         self._attr_icon = "mdi:nfc"
 
 
@@ -175,8 +253,20 @@ class HuaweiWifi80211RSwitch(HuaweiSwitch):
     ) -> None:
         """Initialize."""
         super().__init__(coordinator, SWITCH_WIFI_80211R, None)
-        self._attr_name = f"{self.coordinator.name} WiFi 802.11r"
-        self._attr_unique_id = f"wifi_802_11_r_{self.coordinator.router_info.serial_number}"
+
+        self._attr_name = _generate_switch_name(
+            _FUNCTION_DISPLAYED_NAME_WIFI_802_11_R,
+            coordinator.primary_router_name
+        )
+        self._attr_unique_id = _generate_switch_unique_id(
+            coordinator,
+            _FUNCTION_UID_WIFI_802_11_R
+        )
+        self.entity_id = _generate_switch_id(
+            coordinator,
+            _FUNCTION_DISPLAYED_NAME_WIFI_802_11_R,
+            coordinator.primary_router_name
+        )
         self._attr_icon = "mdi:wifi-settings"
 
 
@@ -189,6 +279,17 @@ class HuaweiWifiTWTSwitch(HuaweiSwitch):
         """Initialize."""
         super().__init__(coordinator, SWITCH_WIFI_TWT, None)
 
-        self._attr_name = f"{self.coordinator.name} WiFi 6 TWT"
-        self._attr_unique_id = f"wifi_twt_{self.coordinator.router_info.serial_number}"
+        self._attr_name = _generate_switch_name(
+            _FUNCTION_DISPLAYED_NAME_WIFI_TWT,
+            coordinator.primary_router_name
+        )
+        self._attr_unique_id = _generate_switch_unique_id(
+            coordinator,
+            _FUNCTION_ID_WIFI_TWT
+        )
+        self.entity_id = _generate_switch_id(
+            coordinator,
+            _FUNCTION_DISPLAYED_NAME_WIFI_TWT,
+            coordinator.primary_router_name
+        )
         self._attr_icon = "mdi:wifi-settings"
