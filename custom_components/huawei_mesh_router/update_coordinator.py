@@ -28,6 +28,7 @@ from .client.classes import (
     MAC_ADDR,
     NODE_HILINK_TYPE_DEVICE,
     HuaweiClientDevice,
+    HuaweiConnectionInfo,
     HuaweiDeviceNode,
     HuaweiRouterInfo,
 )
@@ -187,6 +188,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialize HuaweiController."""
         self._tags_map: TagsMap = TagsMap(tags_map_storage)
         self._connected_devices: dict[MAC_ADDR, ConnectedDevice] = {}
+        self._wan_info: HuaweiConnectionInfo | None = None
 
         self._config: ConfigEntry = config_entry
         self._routersWatcher: RoutersWatcher = RoutersWatcher()
@@ -248,6 +250,10 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         """Return the information of the router."""
         return self._router_infos.get(device_mac or _PRIMARY_ROUTER_IDENTITY)
 
+    def get_wan_info(self) -> HuaweiConnectionInfo | None:
+        """Return the information of the router."""
+        return self._wan_info
+
     def get_configuration_url(self, device_mac: MAC_ADDR | None = None) -> str:
         """Return the router's configuration URL."""
         return self._select_api(device_mac).router_url
@@ -292,9 +298,18 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Update started")
         await self._update_apis()
         await self._update_router_infos()
+        await self._update_wan_info()
         await self._update_switches()
         await self._update_connected_devices()
         _LOGGER.debug("Update completed")
+
+    async def _update_wan_info(self) -> None:
+        _LOGGER.debug("Updating wan info")
+        try:
+            self._wan_info = await self._select_api(_PRIMARY_ROUTER_IDENTITY).get_wan_connection_info()
+        except Exception as ex:
+            _LOGGER.error("Can not update wan info: %s", str(ex))
+        _LOGGER.debug("Wan info updated")
 
     async def _update_router_infos(self) -> None:
         """Asynchronous update of routers information."""

@@ -5,30 +5,30 @@ import hashlib
 import hmac
 import json
 import logging
-import re
 from random import randbytes
-from typing import Any, Callable, Dict
+import re
+from typing import Any, Callable, Dict, Final
 
 import aiohttp
 from aiohttp import ClientResponse
 from aiohttp.abc import AbstractCookieJar
 from yarl import URL
 
-TIMEOUT = 5.0
+TIMEOUT: Final = 5.0
 
-SESSION_COOKIE_NAME = "SessionID_R3"
+SESSION_COOKIE_NAME: Final = "SessionID_R3"
 
-APICALL_ERRCODE_UNAUTHORIZED = -2
-APICALL_ERRCODE_REQUEST = -3
+APICALL_ERRCODE_UNAUTHORIZED: Final = -2
+APICALL_ERRCODE_REQUEST: Final = -3
 
-APICALL_ERRCAT_CREDENTIALS = "user_pass_err"
-APICALL_ERRCAT_CSRF = "csrf_error"
-APICALL_ERRCAT_REQUEST = "request_error"
-APICALL_ERRCAT_UNAUTHORIZED = "unauthorized"
+APICALL_ERRCAT_CREDENTIALS: Final = "user_pass_err"
+APICALL_ERRCAT_CSRF: Final = "csrf_error"
+APICALL_ERRCAT_REQUEST: Final = "request_error"
+APICALL_ERRCAT_UNAUTHORIZED: Final = "unauthorized"
 
-AUTH_FAILURE_GENERAL = "auth_general"
-AUTH_FAILURE_CREDENTIALS = "auth_invalid_credentials"
-AUTH_FAILURE_CSRF = "auth_invalid_csrf"
+AUTH_FAILURE_GENERAL: Final = "auth_general"
+AUTH_FAILURE_CREDENTIALS: Final = "auth_invalid_credentials"
+AUTH_FAILURE_CSRF: Final = "auth_invalid_csrf"
 
 
 # ---------------------------

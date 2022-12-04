@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, TypeAlias
+from typing import Any, Dict, Final, Iterable, TypeAlias
 
-VENDOR_CLASS_ID_ROUTER = "router"
+VENDOR_CLASS_ID_ROUTER: Final = "router"
 
-NODE_HILINK_TYPE_DEVICE = "Device"
-NODE_HILINK_TYPE_NONE = "None"
+NODE_HILINK_TYPE_DEVICE: Final = "Device"
+NODE_HILINK_TYPE_NONE: Final = "None"
 
 MAC_ADDR: TypeAlias = str
 
 
 # ---------------------------
-#   RouterInfo
+#   HuaweiRouterInfo
 # ---------------------------
 @dataclass
 class HuaweiRouterInfo:
@@ -24,6 +24,17 @@ class HuaweiRouterInfo:
     hardware_version: str
     software_version: str
     harmony_os_version: str
+    uptime: int
+
+
+# ---------------------------
+#   HuaweiConnectionInfo
+# ---------------------------
+@dataclass
+class HuaweiConnectionInfo:
+    uptime: int
+    connected: bool
+    address: str | None
 
 
 # ---------------------------

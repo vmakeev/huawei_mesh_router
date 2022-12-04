@@ -8,13 +8,13 @@ from typing import Final
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
 from .client.huaweiapi import ACTION_REBOOT
 from .const import DOMAIN
+from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,42 +23,6 @@ _FUNCTION_DISPLAYED_NAME_REBOOT: Final = "Reboot"
 _FUNCTION_UID_REBOOT: Final = "button_reboot"
 
 ENTITY_DOMAIN: Final = "button"
-ENTITY_ID_FORMAT: Final = ENTITY_DOMAIN + ".{}"
-
-
-# ---------------------------
-#   _generate_button_name
-# ---------------------------
-def _generate_button_name(
-        button_function_displayed_name: str,
-        device_name: str
-) -> str:
-    return f"{device_name} {button_function_displayed_name}"
-
-
-# ---------------------------
-#   _generate_button_id
-# ---------------------------
-def _generate_button_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        button_function_displayed_name: str,
-        device_name: str
-) -> str:
-    preferred_id = f"{coordinator.name} {button_function_displayed_name} {device_name}"
-    return generate_entity_id(ENTITY_ID_FORMAT, preferred_id, hass=coordinator.hass)
-
-
-# ---------------------------
-#   _generate_button_unique_id
-# ---------------------------
-def _generate_button_unique_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        button_function_id: str,
-        device_mac: MAC_ADDR | None
-) -> str:
-    prefix = coordinator.unique_id
-    suffix = coordinator.get_router_info().serial_number if not device_mac else device_mac
-    return f"{prefix}_{button_function_id}_{suffix.lower()}"
 
 
 # ---------------------------
@@ -156,17 +120,18 @@ class HuaweiRebootButton(HuaweiButton):
 
         self._attr_device_class = ButtonDeviceClass.RESTART
 
-        self._attr_name = _generate_button_name(
+        self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_REBOOT,
             device.name if device else coordinator.primary_router_name
         )
 
-        self.entity_id = _generate_button_id(
+        self.entity_id = generate_entity_id(
             coordinator,
+            ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_REBOOT,
             device.name if device else coordinator.primary_router_name)
 
-        self._attr_unique_id = _generate_button_unique_id(
+        self._attr_unique_id = generate_entity_unique_id(
             coordinator,
             _FUNCTION_UID_REBOOT,
             device.mac if device else None

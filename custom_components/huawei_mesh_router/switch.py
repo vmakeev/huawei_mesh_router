@@ -9,7 +9,6 @@ from typing import Any, Final
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -24,6 +23,7 @@ from .client.huaweiapi import (
     SWITCH_WIFI_TWT,
 )
 from .const import DOMAIN
+from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,42 +38,6 @@ _FUNCTION_DISPLAYED_NAME_WIFI_TWT: Final = "WiFi 6 TWT"
 _FUNCTION_ID_WIFI_TWT: Final = "switch_wifi_twt"
 
 ENTITY_DOMAIN: Final = "switch"
-ENTITY_ID_FORMAT: Final = ENTITY_DOMAIN + ".{}"
-
-
-# ---------------------------
-#   _generate_switch_name
-# ---------------------------
-def _generate_switch_name(
-        switch_function_displayed_name: str,
-        device_name: str
-) -> str:
-    return f"{device_name} {switch_function_displayed_name}"
-
-
-# ---------------------------
-#   _generate_switch_id
-# ---------------------------
-def _generate_switch_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        sensor_function_displayed_name: str,
-        device_name: str
-) -> str:
-    preferred_id = f"{coordinator.name} {sensor_function_displayed_name} {device_name}"
-    return generate_entity_id(ENTITY_ID_FORMAT, preferred_id, hass=coordinator.hass)
-
-
-# ---------------------------
-#   _generate_switch_unique_id
-# ---------------------------
-def _generate_switch_unique_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        switch_function_id: str,
-        device_mac: MAC_ADDR | None = None
-) -> str:
-    prefix = coordinator.unique_id
-    suffix = coordinator.get_router_info().serial_number if not device_mac else device_mac
-    return f"{prefix}_{switch_function_id}_{suffix.lower()}"
 
 
 # ---------------------------
@@ -225,17 +189,18 @@ class HuaweiNfcSwitch(HuaweiSwitch):
         """Initialize."""
         super().__init__(coordinator, SWITCH_NFC, device.mac if device else None)
 
-        self._attr_name = _generate_switch_name(
+        self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_NFC,
             device.name if device else coordinator.primary_router_name
         )
-        self._attr_unique_id = _generate_switch_unique_id(
+        self._attr_unique_id = generate_entity_unique_id(
             coordinator,
             _FUNCTION_UID_NFC,
             device.mac if device else None
         )
-        self.entity_id = _generate_switch_id(
+        self.entity_id = generate_entity_id(
             coordinator,
+            ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_NFC,
             device.name if device else coordinator.primary_router_name
         )
@@ -254,16 +219,17 @@ class HuaweiWifi80211RSwitch(HuaweiSwitch):
         """Initialize."""
         super().__init__(coordinator, SWITCH_WIFI_80211R, None)
 
-        self._attr_name = _generate_switch_name(
+        self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_WIFI_802_11_R,
             coordinator.primary_router_name
         )
-        self._attr_unique_id = _generate_switch_unique_id(
+        self._attr_unique_id = generate_entity_unique_id(
             coordinator,
             _FUNCTION_UID_WIFI_802_11_R
         )
-        self.entity_id = _generate_switch_id(
+        self.entity_id = generate_entity_id(
             coordinator,
+            ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WIFI_802_11_R,
             coordinator.primary_router_name
         )
@@ -279,16 +245,17 @@ class HuaweiWifiTWTSwitch(HuaweiSwitch):
         """Initialize."""
         super().__init__(coordinator, SWITCH_WIFI_TWT, None)
 
-        self._attr_name = _generate_switch_name(
+        self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_WIFI_TWT,
             coordinator.primary_router_name
         )
-        self._attr_unique_id = _generate_switch_unique_id(
+        self._attr_unique_id = generate_entity_unique_id(
             coordinator,
             _FUNCTION_ID_WIFI_TWT
         )
-        self.entity_id = _generate_switch_id(
+        self.entity_id = generate_entity_id(
             coordinator,
+            ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WIFI_TWT,
             coordinator.primary_router_name
         )

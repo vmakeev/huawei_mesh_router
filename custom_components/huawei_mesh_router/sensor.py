@@ -1,25 +1,32 @@
 """Support for additional sensors."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 import logging
-from typing import Any, Callable, Final
+from typing import Callable, Final
 
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import EntityCategory, generate_entity_id
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import DEVICE_TAG, ConnectedDevice, HuaweiInterfaceType
 from .client.classes import MAC_ADDR
 from .client.huaweiapi import CONNECTED_VIA_ID_PRIMARY
 from .const import DOMAIN
+from .helpers import (
+    generate_entity_id,
+    generate_entity_name,
+    generate_entity_unique_id,
+    get_past_moment,
+)
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 
 UNITS_CLIENTS: Final = "clients"
@@ -32,58 +39,52 @@ _FUNCTION_UID_TOTAL_CLIENTS: Final = "sensor_total_clients"
 _FUNCTION_DISPLAYED_NAME_CLIENTS: Final = "clients"
 _FUNCTION_UID_CLIENTS: Final = "sensor_clients"
 
+_FUNCTION_DISPLAYED_NAME_UPTIME: Final = "uptime"
+_FUNCTION_UID_UPTIME: Final = "sensor_uptime"
+
+_FUNCTION_DISPLAYED_NAME_WAN: Final = "Internet connection"
+_FUNCTION_UID_WAN: Final = "internet_connection"
+
 ENTITY_DOMAIN: Final = "sensor"
-ENTITY_ID_FORMAT: Final = ENTITY_DOMAIN + ".{}"
+
+
+# ---------------------------
+#   HuaweiSensorEntityDescription
+# ---------------------------
+@dataclass
+class HuaweiSensorEntityDescription(SensorEntityDescription):
+    """A class that describes sensor entities."""
+    function_name: str | None = None
+    function_uid: str | None = None
+    device_mac: MAC_ADDR | None = None
+    device_name: str | None = None
+    name: str | None = field(init=False)
+
+    def __post_init__(self):
+        self.name = generate_entity_name(self.function_name, self.device_name)
+
+
+# ---------------------------
+#   HuaweiUptimeSensorEntityDescription
+# ---------------------------
+@dataclass
+class HuaweiUptimeSensorEntityDescription(HuaweiSensorEntityDescription):
+    """A class that describes sensor entities."""
+    native_unit_of_measurement: str | None = None
+    state_class: SensorStateClass | str | None = SensorStateClass.MEASUREMENT
+    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
+    device_class: str | None = SensorDeviceClass.TIMESTAMP
 
 
 # ---------------------------
 #   HuaweiClientsSensorEntityDescription
 # ---------------------------
 @dataclass
-class HuaweiClientsSensorEntityDescription(SensorEntityDescription):
+class HuaweiClientsSensorEntityDescription(HuaweiSensorEntityDescription):
     """A class that describes clients count sensor entities."""
-    native_unit_of_measurement = UNITS_CLIENTS
-    state_class = SensorStateClass.MEASUREMENT
-    entity_category = EntityCategory.DIAGNOSTIC
-    function_name: str | None = None
-    function_uid: str | None = None
-    device_mac: MAC_ADDR | None = None
-    device_name: str | None = None
-
-
-# ---------------------------
-#   _generate_sensor_name
-# ---------------------------
-def _generate_sensor_name(
-        sensor_function_displayed_name: str,
-        device_name: str
-) -> str:
-    return f"{device_name} {sensor_function_displayed_name}"
-
-
-# ---------------------------
-#   _generate_sensor_id
-# ---------------------------
-def _generate_sensor_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        sensor_function_displayed_name: str,
-        device_name: str
-) -> str:
-    preferred_id = f"{coordinator.name} {sensor_function_displayed_name} {device_name}"
-    return generate_entity_id(ENTITY_ID_FORMAT, preferred_id, hass=coordinator.hass)
-
-
-# ---------------------------
-#   _generate_sensor_unique_id
-# ---------------------------
-def _generate_sensor_unique_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        sensor_function_id: str,
-        device_mac: MAC_ADDR | None = None
-) -> str:
-    prefix = coordinator.unique_id
-    suffix = coordinator.get_router_info().serial_number if not device_mac else device_mac
-    return f"{prefix}_{sensor_function_id}_{suffix.lower()}"
+    native_unit_of_measurement: str | None = UNITS_CLIENTS
+    state_class: SensorStateClass | str | None = SensorStateClass.MEASUREMENT
+    entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
 
 
 # ---------------------------
@@ -98,50 +99,55 @@ async def async_setup_entry(
     coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     sensors = [
-        HuaweiConnectedDevicesSensor(coordinator,
-                                     HuaweiClientsSensorEntityDescription(
-                                         key="total",
-                                         icon="mdi:account-multiple",
-                                         name=_generate_sensor_name(
-                                             _FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS,
-                                             coordinator.primary_router_name
-                                         ),
-                                         device_mac=None,
-                                         device_name=coordinator.primary_router_name,
-                                         function_uid=_FUNCTION_UID_TOTAL_CLIENTS,
-                                         function_name=_FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS
-                                     ),
-                                     lambda device: device.is_active),
-        HuaweiConnectedDevicesSensor(coordinator,
-                                     HuaweiClientsSensorEntityDescription(
-                                         key="primary",
-                                         icon="mdi:router-wireless",
-                                         name=_generate_sensor_name(
-                                             _FUNCTION_DISPLAYED_NAME_CLIENTS,
-                                             coordinator.primary_router_name
-                                         ),
-                                         device_mac=None,
-                                         device_name=coordinator.primary_router_name,
-                                         function_uid=_FUNCTION_UID_CLIENTS,
-                                         function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS
-                                     ),
-                                     lambda device:
-                                     device.is_active and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY)
+        HuaweiUptimeSensor(
+            coordinator,
+            HuaweiUptimeSensorEntityDescription(
+                key="uptime",
+                icon="mdi:timer-outline",
+                device_mac=None,
+                device_name=coordinator.primary_router_name,
+                function_uid=_FUNCTION_UID_UPTIME,
+                function_name=_FUNCTION_DISPLAYED_NAME_UPTIME
+            )),
+        HuaweiConnectedDevicesSensor(
+            coordinator,
+            HuaweiClientsSensorEntityDescription(
+                key="total",
+                icon="mdi:account-multiple",
+                device_mac=None,
+                device_name=coordinator.primary_router_name,
+                function_uid=_FUNCTION_UID_TOTAL_CLIENTS,
+                function_name=_FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS
+            ),
+            lambda device: device.is_active),
+        HuaweiConnectedDevicesSensor(
+            coordinator,
+            HuaweiClientsSensorEntityDescription(
+                key="primary",
+                icon="mdi:router-wireless",
+                device_mac=None,
+                device_name=coordinator.primary_router_name,
+                function_uid=_FUNCTION_UID_CLIENTS,
+                function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS
+            ),
+            lambda device: device.is_active and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY)
     ]
 
     async_add_entities(sensors)
 
     watcher: RoutersWatcher = RoutersWatcher()
     known_client_sensors: dict[MAC_ADDR, HuaweiConnectedDevicesSensor] = {}
+    known_uptime_sensors: dict[MAC_ADDR, HuaweiUptimeSensor] = {}
 
     @callback
     def on_router_added(mac: MAC_ADDR, router: ConnectedDevice) -> None:
         """When a new mesh router is detected."""
+        new_entities = []
+
         if not known_client_sensors.get(mac):
             description = HuaweiClientsSensorEntityDescription(
                 key=mac,
                 icon="mdi:router-wireless",
-                name=_generate_sensor_name(_FUNCTION_DISPLAYED_NAME_CLIENTS, router.name),
                 device_mac=mac,
                 device_name=router.name,
                 function_uid=_FUNCTION_UID_CLIENTS,
@@ -153,8 +159,24 @@ async def async_setup_entry(
                 lambda device, via_id=mac:
                 device.is_active and device.connected_via_id == via_id
             )
-            async_add_entities([entity])
             known_client_sensors[mac] = entity
+            new_entities.append(entity)
+
+        if not known_uptime_sensors.get(mac):
+            description = HuaweiUptimeSensorEntityDescription(
+                key="uptime",
+                icon="mdi:timer-outline",
+                device_mac=mac,
+                device_name=router.name,
+                function_uid=_FUNCTION_UID_UPTIME,
+                function_name=_FUNCTION_DISPLAYED_NAME_UPTIME
+            )
+            entity = HuaweiUptimeSensor(coordinator, description)
+            known_uptime_sensors[mac] = entity
+            new_entities.append(entity)
+
+        if new_entities:
+            async_add_entities(new_entities)
 
     @callback
     def coordinator_updated() -> None:
@@ -165,9 +187,78 @@ async def async_setup_entry(
 
 
 # ---------------------------
+#   HuaweiSensor
+# ---------------------------
+class HuaweiSensor(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity):
+    entity_description: HuaweiSensorEntityDescription
+
+    def __init__(
+            self,
+            coordinator: HuaweiControllerDataUpdateCoordinator,
+            description: HuaweiSensorEntityDescription
+    ) -> None:
+        """Initialize."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_device_info = coordinator.get_device_info(description.device_mac)
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator,
+            description.function_uid,
+            description.device_mac
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            description.function_name,
+            description.device_name
+        )
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.is_router_online(self.entity_description.device_mac)
+
+    async def async_added_to_hass(self) -> None:
+        """Run when entity about to be added to hass."""
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
+        _LOGGER.debug("%s added to hass", self.name)
+
+
+# ---------------------------
+#   HuaweiUptimeSensor
+# ---------------------------
+class HuaweiUptimeSensor(HuaweiSensor):
+    entity_description: HuaweiUptimeSensorEntityDescription
+    _attr_native_value: datetime | None = None
+
+    def __init__(
+            self,
+            coordinator: HuaweiControllerDataUpdateCoordinator,
+            description: HuaweiUptimeSensorEntityDescription
+    ) -> None:
+        """Initialize."""
+        super().__init__(coordinator, description)
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        router_info = self.coordinator.get_router_info(self.entity_description.device_mac)
+        if not router_info:
+            return
+        uptime_seconds = router_info.uptime
+        self._attr_native_value = get_past_moment(uptime_seconds)
+        self._attr_extra_state_attributes["seconds"] = uptime_seconds
+        super()._handle_coordinator_update()
+
+
+# ---------------------------
 #   HuaweiConnectedDevicesSensor
 # ---------------------------
-class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity):
+class HuaweiConnectedDevicesSensor(HuaweiSensor):
+    entity_description: HuaweiClientsSensorEntityDescription
+    _attr_native_value: int = 0
 
     def __init__(
             self,
@@ -176,29 +267,11 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
             devices_predicate: Callable[[ConnectedDevice], bool]
     ) -> None:
         """Initialize."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, description)
 
-        self._actual_value: int = 0
-        self._attrs: dict[str, Any] = {}
+        self._attr_native_value = 0
+        self._attr_extra_state_attributes = {}
         self._devices_predicate: Callable[[ConnectedDevice], bool] = devices_predicate
-        self._device_mac = description.device_mac
-
-        self._attr_name = description.name
-        self._attr_device_info = coordinator.get_device_info(description.device_mac)
-        self._attr_unique_id = _generate_sensor_unique_id(coordinator, description.function_uid, description.device_mac)
-        self.entity_description = description
-        self.entity_id = _generate_sensor_id(coordinator, description.function_name, description.device_name)
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.is_router_online(self._device_mac)
-
-    async def async_added_to_hass(self) -> None:
-        """Run when entity about to be added to hass."""
-        await super().async_added_to_hass()
-        self._handle_coordinator_update()
-        _LOGGER.debug("%s added to hass", self._attr_name)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -247,27 +320,17 @@ class HuaweiConnectedDevicesSensor(CoordinatorEntity[HuaweiControllerDataUpdateC
                     else:
                         tagged_devices[tag] = 1
 
-        self._actual_value = total_clients
+        self._attr_native_value = total_clients
 
-        self._attrs["guest_clients"] = guest_clients
-        self._attrs["hilink_clients"] = hilink_clients
-        self._attrs["wireless_clients"] = wireless_clients
-        self._attrs["lan_clients"] = lan_clients
-        self._attrs["wifi_2_4_clients"] = wifi_2_4_clients
-        self._attrs["wifi_5_clients"] = wifi_5_clients
+        self._attr_extra_state_attributes["guest_clients"] = guest_clients
+        self._attr_extra_state_attributes["hilink_clients"] = hilink_clients
+        self._attr_extra_state_attributes["wireless_clients"] = wireless_clients
+        self._attr_extra_state_attributes["lan_clients"] = lan_clients
+        self._attr_extra_state_attributes["wifi_2_4_clients"] = wifi_2_4_clients
+        self._attr_extra_state_attributes["wifi_5_clients"] = wifi_5_clients
 
         for tag, count in tagged_devices.items():
-            self._attrs[f"tagged_{tag}_clients"] = count
-        self._attrs[f"untagged_clients"] = untagged_clients
+            self._attr_extra_state_attributes[f"tagged_{tag}_clients"] = count
+        self._attr_extra_state_attributes[f"untagged_clients"] = untagged_clients
 
         super()._handle_coordinator_update()
-
-    @property
-    def native_value(self) -> StateType | int:
-        """Return the state."""
-        return self._actual_value
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes."""
-        return self._attrs
