@@ -22,7 +22,7 @@ from .client.huaweiapi import (
     SWITCH_WIFI_80211R,
     SWITCH_WIFI_TWT,
 )
-from .const import DOMAIN
+from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 
@@ -68,7 +68,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up switches for Huawei Router component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
 
     switches: list[HuaweiSwitch] = []
 

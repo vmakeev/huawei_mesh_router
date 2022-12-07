@@ -8,6 +8,9 @@ DOMAIN: Final = "huawei_mesh_router"
 
 STORAGE_VERSION: Final = 1
 
+DATA_KEY_COORDINATOR: Final = "coordinator"
+DATA_KEY_SERVICES: Final = "services_count"
+
 DEFAULT_HOST: Final = "192.168.3.1"
 DEFAULT_USER: Final = "admin"
 DEFAULT_PORT: Final = 80
