@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
 from .client.huaweiapi import ACTION_REBOOT
-from .const import DOMAIN
+from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
 
@@ -30,7 +30,7 @@ ENTITY_DOMAIN: Final = "button"
 # ---------------------------
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities) -> None:
     """Set up buttons for Huawei Router component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
 
     buttons = [
         HuaweiRebootButton(coordinator, None)

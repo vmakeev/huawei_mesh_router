@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .client.classes import MAC_ADDR
-from .const import DOMAIN
+from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import (
     generate_entity_id,
     generate_entity_name,
@@ -69,7 +69,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up sensors for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
 
     sensors = [
         HuaweiWanBinarySensor(

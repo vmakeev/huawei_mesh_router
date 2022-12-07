@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Dict, Final, Iterable, TypeAlias
 
 VENDOR_CLASS_ID_ROUTER: Final = "router"
@@ -11,6 +12,22 @@ NODE_HILINK_TYPE_DEVICE: Final = "Device"
 NODE_HILINK_TYPE_NONE: Final = "None"
 
 MAC_ADDR: TypeAlias = str
+
+
+# ---------------------------
+#   FilterType
+# ---------------------------
+class FilterType(Enum):
+    WHITELIST = 0,
+    BLACKLIST = 1,
+
+
+# ---------------------------
+#   FilterType
+# ---------------------------
+class FilterAction(Enum):
+    ADD = 0,
+    REMOVE = 1,
 
 
 # ---------------------------

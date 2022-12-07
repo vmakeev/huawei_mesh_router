@@ -7,6 +7,9 @@ from typing import Any, Final, Iterable
 from aiohttp import ClientResponse
 
 from .classes import (
+    MAC_ADDR,
+    FilterAction,
+    FilterType,
     HuaweiClientDevice,
     HuaweiConnectionInfo,
     HuaweiDeviceNode,
@@ -34,6 +37,7 @@ _URL_SWITCH_WIFI_80211R: Final = "api/ntwk/WlanGuideBasic?type=notshowpassall"
 _URL_SWITCH_WIFI_TWT: Final = "api/ntwk/WlanGuideBasic?type=notshowpassall"
 _URL_REBOOT: Final = "api/service/reboot.cgi"
 _URL_WANDETECT: Final = "api/ntwk/wandetect"
+_URL_WLAN_FILTER: Final = "api/ntwk/wlanfilterenhance"
 
 _STATUS_CONNECTED: Final = "Connected"
 
@@ -44,6 +48,21 @@ _LOGGER = logging.getLogger(__name__)
 #   UnsupportedActionError
 # ---------------------------
 class UnsupportedActionError(Exception):
+
+    def __init__(self, message: str) -> None:
+        """Initialize."""
+        super().__init__(message)
+        self._message = message
+
+    def __str__(self, *args, **kwargs) -> str:
+        """ Return str(self). """
+        return self._message
+
+
+# ---------------------------
+#   InvalidActionError
+# ---------------------------
+class InvalidActionError(Exception):
 
     def __init__(self, message: str) -> None:
         """Initialize."""
@@ -282,7 +301,7 @@ class HuaweiApi:
         return device
 
     async def get_devices_topology(self) -> Iterable[HuaweiDeviceNode]:
-        """Return the devices topology."""
+        """Return the topology of the devices."""
         return [self._get_device(item) for item in await self._core_api.get(_URL_DEVICE_TOPOLOGY)]
 
     async def execute_action(self, action_name: str) -> None:
@@ -291,3 +310,186 @@ class HuaweiApi:
             await self._core_api.post(_URL_REBOOT, {})
         else:
             raise UnsupportedActionError(f"Unsupported action name: {action_name}")
+
+    async def _process_access_lists(
+            self,
+            state: dict[str, Any],
+            filter_type: FilterType,
+            filter_action: FilterAction,
+            device_mac: MAC_ADDR,
+            device_name: str | None
+    ) -> (bool | None, dict[str, Any] | None, dict[str, Any] | None):
+        """Return (need_action, whitelist, blacklist)"""
+        whitelist = state.get("WMACAddresses")
+        blacklist = state.get("BMACAddresses")
+
+        if whitelist is None:
+            _LOGGER.debug("Can not find whitelist")
+            return None, None, None
+
+        if blacklist is None:
+            _LOGGER.debug("Can not find blacklist")
+            return None, None, None
+
+        async def get_access_list_item() -> dict[str, Any]:
+            if device_name:
+                return {"MACAddress": device_mac, "HostName": device_name}
+            # search for HostName if no item popped and no name provided
+            known_devices = await self.get_known_devices()
+            for device in known_devices:
+                if device.mac_address == device_mac:
+                    return {"MACAddress": device_mac, "HostName": device.actual_name}
+            _LOGGER.debug("Can not find known device '%s'", device_mac)
+            return {"MACAddress": device_mac, "HostName": f"Unknown device {device_mac}"}
+
+        # | FilterAction | FilterType |    WL    |   BL   |
+        # |--------------|------------|----------|--------|
+        # | ADD          | WHITELIST  |   Add    | Remove |
+        # | ADD          | BLACKLIST  |  Remove  |  Add   |
+        # | REMOVE       | WHITELIST  |  Remove  |  None  |
+        # | REMOVE       | BLACKLIST  |   None   | Remove |
+
+        whitelist_index: int | None = None
+        blacklist_index: int | None = None
+
+        for index in range(len(whitelist)):
+            if device_mac == whitelist[index].get("MACAddress"):
+                whitelist_index = index
+                _LOGGER.debug("Device '%s' found at %s whitelist", device_mac, state.get("FrequencyBand"))
+                break
+
+        for index in range(len(blacklist)):
+            if device_mac == blacklist[index].get("MACAddress"):
+                blacklist_index = index
+                _LOGGER.debug("Device '%s' found at %s blacklist", device_mac, state.get("FrequencyBand"))
+                break
+
+        if filter_action == FilterAction.REMOVE:
+
+            if filter_type == FilterType.BLACKLIST:
+                if blacklist_index is None:
+                    _LOGGER.debug("Can not find device '%s' to remove from blacklist", device_mac)
+                    return False, whitelist, blacklist
+                del blacklist[blacklist_index]
+                return True, whitelist, blacklist
+            elif filter_type == FilterType.WHITELIST:
+                if whitelist_index is None:
+                    _LOGGER.debug("Can not find device '%s' to remove from whitelist", device_mac)
+                    return False, whitelist, blacklist
+                del whitelist[whitelist_index]
+                return True, whitelist, blacklist
+            else:
+                raise InvalidActionError(f"Unknown FilterType: {filter_type}")
+
+        elif filter_action == FilterAction.ADD:
+            item_to_add = None
+
+            if filter_type == FilterType.BLACKLIST:
+                if whitelist_index is not None:
+                    item_to_add = whitelist.pop(whitelist_index)
+                if blacklist_index is not None:
+                    _LOGGER.debug("Device '%s' already in the %s blacklist", device_mac, state.get("FrequencyBand"))
+                    return False, whitelist, blacklist
+                else:
+                    blacklist.append(item_to_add or await get_access_list_item())
+                    return True, whitelist, blacklist
+
+            if filter_type == FilterType.WHITELIST:
+                if blacklist_index is not None:
+                    item_to_add = blacklist.pop(blacklist_index)
+                if whitelist_index is not None:
+                    _LOGGER.debug("Device '%s' already in the %s whitelist", device_mac, state.get("FrequencyBand"))
+                    return False, whitelist, blacklist
+                else:
+                    whitelist.append(item_to_add or await get_access_list_item())
+                    return True, whitelist, blacklist
+            else:
+                raise InvalidActionError(f"Unknown FilterType: {filter_type}")
+
+        else:
+            raise InvalidActionError(f"Unknown FilterAction: {filter_action}")
+
+    async def apply_filter(
+            self,
+            filter_type: FilterType,
+            filter_action: FilterAction,
+            device_mac: MAC_ADDR,
+            device_name: str | None = None
+    ) -> bool:
+        """Apply filter to the device."""
+        def verify_state(target_state: dict[str, Any]) -> bool:
+            enabled = target_state.get("MACAddressControlEnabled")
+            verification_result = isinstance(enabled, bool) and enabled
+            if not verification_result:
+                _LOGGER.warning("WLAN Filtering is not enabled")
+            return verification_result
+
+        actual_states = await self._core_api.get(_URL_WLAN_FILTER)
+
+        state_2g = None
+        state_5g = None
+        for state in actual_states:
+            frequency = state.get("FrequencyBand")
+            if frequency == "2.4GHz":
+                state_2g = state
+            elif frequency == "5GHz":
+                state_5g = state
+
+        if state_2g is None:
+            _LOGGER.debug("Can not find actual 2.4GHz filter state")
+            return False
+
+        if state_5g is None:
+            _LOGGER.debug("Can not find actual 5GHz filter state")
+            return False
+
+        if not verify_state(state_2g) or not verify_state(state_5g):
+            _LOGGER.debug("Verification failed")
+            return False
+
+        need_action_2g, whitelist_2g, blacklist_2g = await self._process_access_lists(
+            state_2g,
+            filter_type,
+            filter_action,
+            device_mac,
+            device_name
+        )
+        if whitelist_2g is None or blacklist_2g is None or need_action_2g is None:
+            _LOGGER.debug("Processing 2.4GHz filter failed")
+            return False
+
+        need_action_5g, whitelist_5g, blacklist_5g = await self._process_access_lists(
+            state_5g,
+            filter_type,
+            filter_action,
+            device_mac,
+            device_name
+        )
+        if whitelist_5g is None or blacklist_5g is None or need_action_5g is None:
+            _LOGGER.debug("Processing 5GHz filter failed")
+            return False
+
+        if not need_action_2g and not need_action_5g:
+            return True
+
+        command = {
+            "config2g": {
+                "MACAddressControlEnabled": True,
+                "WMacFilters": whitelist_2g,
+                "ID": state_2g.get("ID"),
+                "MacFilterPolicy": state_2g.get("MacFilterPolicy"),
+                "BMacFilters": blacklist_2g,
+                "FrequencyBand": state_2g.get("FrequencyBand"),
+            },
+            "config5g": {
+                "MACAddressControlEnabled": True,
+                "WMacFilters": whitelist_5g,
+                "ID": state_5g.get("ID"),
+                "MacFilterPolicy": state_5g.get("MacFilterPolicy"),
+                "BMacFilters": blacklist_5g,
+                "FrequencyBand": state_5g.get("FrequencyBand"),
+            },
+        }
+
+        await self._core_api.post(_URL_WLAN_FILTER, command)
+        return True

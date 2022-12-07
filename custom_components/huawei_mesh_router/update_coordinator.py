@@ -243,6 +243,10 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         """Return the tags map."""
         return self._tags_map
 
+    @property
+    def primary_router_api(self) -> HuaweiApi:
+        return self._select_api(None)
+
     def is_router_online(self, device_mac: MAC_ADDR | None = None) -> bool:
         return self._apis.get(device_mac or _PRIMARY_ROUTER_IDENTITY) is not None
 

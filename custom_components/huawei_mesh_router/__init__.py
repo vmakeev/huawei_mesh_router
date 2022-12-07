@@ -5,7 +5,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation
 from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN, PLATFORMS, STORAGE_VERSION
+from .client.huaweiapi import HuaweiApi
+from .const import (
+    DATA_KEY_API,
+    DATA_KEY_COORDINATOR,
+    DOMAIN,
+    PLATFORMS,
+    STORAGE_VERSION,
+)
+from .services import async_setup_services, async_unload_services
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
 CONFIG_SCHEMA = config_validation.removed(DOMAIN, raise_if_present=False)
@@ -32,10 +40,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
     config_entry.async_on_unload(coordinator.unload)
 
-    hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = coordinator
-    hass.data[DOMAIN][config_entry.entry_id] = coordinator
+    hass.data.setdefault(DOMAIN, {}).setdefault(config_entry.entry_id, {})[DATA_KEY_COORDINATOR] = coordinator
+    hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR] = coordinator
 
     hass.config_entries.async_setup_platforms(config_entry, PLATFORMS)
+
+    await async_setup_services(hass, config_entry)
     return True
 
 
@@ -62,7 +72,8 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     """Unload entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
     if unload_ok:
-        coordinator = hass.data[DOMAIN].pop(config_entry.entry_id)
+        coordinator = hass.data[DOMAIN].get(config_entry.entry_id, {}).pop(DATA_KEY_COORDINATOR)
         if coordinator and isinstance(coordinator, HuaweiControllerDataUpdateCoordinator):
             coordinator.unload()
+    await async_unload_services(hass, config_entry)
     return unload_ok
