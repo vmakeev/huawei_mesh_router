@@ -8,6 +8,7 @@ from .client.classes import MAC_ADDR
 
 DEVICE_TAG = str
 
+
 # ---------------------------
 #   HuaweiInterfaceType
 # ---------------------------
@@ -15,6 +16,14 @@ class HuaweiInterfaceType(StrEnum):
     INTERFACE_5GHZ = "5GHz"
     INTERFACE_2_4GHZ = "2.4GHz"
     INTERFACE_LAN = "LAN"
+
+
+# ---------------------------
+#   HuaweiWlanFilterMode
+# ---------------------------
+class HuaweiWlanFilterMode(StrEnum):
+    BLACKLIST = "Blacklist"
+    WHITELIST = "Whitelist"
 
 
 # ---------------------------
@@ -28,12 +37,14 @@ class ConnectedDevice:
                  mac: MAC_ADDR,
                  is_active: bool,
                  tags: list[str],
+                 filter_mode: HuaweiWlanFilterMode | None,
                  **kwargs) -> None:
         self._name: str = name
         self._host_name: str = host_name
         self._mac: MAC_ADDR = mac
         self._is_active: bool = is_active
         self._tags: list[str] = tags
+        self._filter_mode: str = filter_mode
         self._data: Dict = kwargs or {}
 
     def update_device_data(self,
@@ -41,11 +52,13 @@ class ConnectedDevice:
                            host_name: str,
                            is_active: bool,
                            tags: list[str],
+                           filter_mode: HuaweiWlanFilterMode | None,
                            **kwargs):
         self._name: str = name
         self._host_name: str = host_name
         self._is_active: bool = is_active
         self._tags: list[DEVICE_TAG] = tags
+        self._filter_mode: str = filter_mode
         self._data: Dict = kwargs or {}
 
     def __str__(self) -> str:
@@ -115,3 +128,4 @@ class ConnectedDevice:
         for key, value in self._data.items():
             yield key, value
         yield "tags", self._tags
+        yield "filter_list", self._filter_mode

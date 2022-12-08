@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.service import verify_domain_control
 
-from .client.classes import MAC_ADDR, FilterAction, FilterType
+from .client.classes import MAC_ADDR, FilterAction, FilterMode
 from .const import DATA_KEY_COORDINATOR, DATA_KEY_SERVICES, DOMAIN
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
@@ -75,7 +75,9 @@ def _find_coordinator(
         device_mac: MAC_ADDR
 ) -> HuaweiControllerDataUpdateCoordinator | None:
     _LOGGER.debug("Looking for coordinators with device '%s'", device_mac)
-    for _, item in hass.data[DOMAIN].items():
+    for key, item in hass.data[DOMAIN].items():
+        if key == DATA_KEY_SERVICES:
+            continue
         coordinator = item.get(DATA_KEY_COORDINATOR)
         if not coordinator or not isinstance(coordinator, HuaweiControllerDataUpdateCoordinator):
             continue
@@ -96,7 +98,7 @@ async def _async_add_to_whitelist(hass: HomeAssistant, service: ServiceCall):
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
     _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_filter(FilterType.WHITELIST, FilterAction.ADD, device_mac)
+    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.WHITELIST, FilterAction.ADD, device_mac)
     if not success:
         _LOGGER.warning("Can not add item to whitelist")
 
@@ -112,7 +114,7 @@ async def _async_add_to_blacklist(hass: HomeAssistant, service: ServiceCall):
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
     _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_filter(FilterType.BLACKLIST, FilterAction.ADD, device_mac)
+    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.BLACKLIST, FilterAction.ADD, device_mac)
     if not success:
         _LOGGER.warning("Can not add item to blacklist")
 
@@ -128,7 +130,7 @@ async def _async_remove_from_whitelist(hass: HomeAssistant, service: ServiceCall
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
     _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_filter(FilterType.WHITELIST, FilterAction.REMOVE, device_mac)
+    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.WHITELIST, FilterAction.REMOVE, device_mac)
     if not success:
         _LOGGER.warning("Can not remove item from to whitelist")
 
@@ -144,7 +146,7 @@ async def _async_remove_from_blacklist(hass: HomeAssistant, service: ServiceCall
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
     _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_filter(FilterType.BLACKLIST, FilterAction.REMOVE, device_mac)
+    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.BLACKLIST, FilterAction.REMOVE, device_mac)
     if not success:
         _LOGGER.warning("Can not remove item from to blacklist")
 
@@ -195,7 +197,7 @@ async def async_setup_services(hass: HomeAssistant, config_entry: ConfigEntry) -
         )
 
 
-async def async_unload_services(hass: HomeAssistant):
+async def async_unload_services(hass: HomeAssistant, config_entry: ConfigEntry):
     """Unload services."""
     active_instances = _change_instances_count(hass, -1)
     if active_instances > 0:
