@@ -19,10 +19,7 @@ def get_past_moment(offset_seconds: int) -> datetime:
 # ---------------------------
 #   generate_entity_name
 # ---------------------------
-def generate_entity_name(
-        function_displayed_name: str,
-        device_name: str
-) -> str:
+def generate_entity_name(function_displayed_name: str, device_name: str) -> str:
     return f"{device_name} {function_displayed_name}"
 
 
@@ -30,10 +27,10 @@ def generate_entity_name(
 #   generate_entity_id
 # ---------------------------
 def generate_entity_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        entity_domain: str,
-        function_displayed_name: str,
-        device_name: str
+    coordinator: HuaweiControllerDataUpdateCoordinator,
+    entity_domain: str,
+    function_displayed_name: str,
+    device_name: str,
 ) -> str:
     preferred_id = f"{coordinator.name} {function_displayed_name} {device_name}"
     return hass_generate_id(entity_domain + ".{}", preferred_id, hass=coordinator.hass)
@@ -43,10 +40,12 @@ def generate_entity_id(
 #   generate_entity_unique_id
 # ---------------------------
 def generate_entity_unique_id(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        function_uid: str,
-        device_mac: MAC_ADDR | None = None
+    coordinator: HuaweiControllerDataUpdateCoordinator,
+    function_uid: str,
+    device_mac: MAC_ADDR | None = None,
 ) -> str:
     prefix = coordinator.unique_id
-    suffix = coordinator.get_router_info().serial_number if not device_mac else device_mac
+    suffix = (
+        coordinator.get_router_info().serial_number if not device_mac else device_mac
+    )
     return f"{prefix}_{function_uid}_{suffix.lower()}"

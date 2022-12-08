@@ -4,21 +4,21 @@ The component allows you to track all devices connected to your mesh network.
 
 Each tracked device exposes the following attributes:
 
-|    Attribute     |                                          Description                                           | Only when connected |
-|------------------|------------------------------------------------------------------------------------------------|---------------------|
-| `source_type`    | Always `router`                                                                                | No                  |
-| `ip`             | Device IP address                                                                              | Yes                 |
-| `mac`            | MAC address of the device                                                                      | No                  |
-| `hostname`       | Device name according to the device itself                                                     | No                  |
-| `connected_via`  | The name of the router through which the connection was made                                   | Yes                 |
-| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`)                                            | Yes                 |
-| `rssi`           | Signal strength for wireless connections                                                       | Yes                 |
-| `is_guest`       | Is the device connected to the guest network                                                   | Yes                 |
-| `is_hilink`      | Is the device connected via HiLink                                                             | Yes                 |
-| `is_router`      | Is the device are router                                                                       | Yes                 |
-| `tags`           | List of [tags](device-tags.md#device-tags) that marked the device                              | No                  |
-| `filters_list`   | Blacklist, Whitelist or None (see [access control mode](controls.md#wifi-access-control-mode)) | No                  |
-| `friendly_name`  | Device name provided by the router                                                             | No                  |
+|    Attribute     |                                          Description                                            | Only when connected |
+|------------------|-------------------------------------------------------------------------------------------------|---------------------|
+| `source_type`    | Always `router`                                                                                 | No                  |
+| `ip`             | Device IP address                                                                               | Yes                 |
+| `mac`            | MAC address of the device                                                                       | No                  |
+| `hostname`       | Device name according to the device itself                                                      | No                  |
+| `connected_via`  | The name of the router through which the connection was made                                    | Yes                 |
+| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`)                                             | Yes                 |
+| `rssi`           | Signal strength for wireless connections                                                        | Yes                 |
+| `is_guest`       | Is the device connected to the guest network                                                    | Yes                 |
+| `is_hilink`      | Is the device connected via HiLink                                                              | Yes                 |
+| `is_router`      | Is the device are router                                                                        | Yes                 |
+| `tags`           | List of [tags](device-tags.md#device-tags) that marked the device                               | No                  |
+| `filter_list`    | Blacklist, Whitelist or None (see [access control mode](controls.md#wi-fi-access-control-mode)) | No                  |
+| `friendly_name`  | Device name provided by the router                                                              | No                  |
 
 ![alt text](images/device_tracker.png "Title")
 

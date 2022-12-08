@@ -35,7 +35,6 @@ AUTH_FAILURE_CSRF: Final = "auth_invalid_csrf"
 #   AuthenticationError
 # ---------------------------
 class AuthenticationError(Exception):
-
     def __init__(self, message: str, reason_code: str) -> None:
         """Initialize."""
         super().__init__(message)
@@ -48,11 +47,11 @@ class AuthenticationError(Exception):
         return self._reason_code
 
     def __str__(self, *args, **kwargs) -> str:
-        """ Return str(self). """
+        """Return str(self)."""
         return f"{self._message}; reason: {self._reason_code}"
 
     def __repr__(self) -> str:
-        """ Return repr(self). """
+        """Return repr(self)."""
         return self.__str__()
 
 
@@ -60,8 +59,9 @@ class AuthenticationError(Exception):
 #   ApiCallError
 # ---------------------------
 class ApiCallError(Exception):
-
-    def __init__(self, message: str, error_code: int | None, error_category: str | None):
+    def __init__(
+        self, message: str, error_code: int | None, error_category: str | None
+    ):
         """Initialize."""
         super().__init__(message)
         self._message = message
@@ -79,11 +79,11 @@ class ApiCallError(Exception):
         return self._error_category
 
     def __str__(self, *args, **kwargs) -> str:
-        """ Return str(self). """
+        """Return str(self)."""
         return f"{self._message}; code: {self._error_code}, category: {self._error_category}"
 
     def __repr__(self) -> str:
-        """ Return repr(self). """
+        """Return repr(self)."""
         return self.__str__()
 
 
@@ -115,15 +115,14 @@ def _check_authorized(response: ClientResponse, result: Dict) -> bool:
 #   HuaweiCoreApi
 # ---------------------------
 class HuaweiCoreApi:
-
     def __init__(
-            self,
-            host: str,
-            port: int,
-            use_ssl: bool,
-            user: str,
-            password: str,
-            verify_ssl: bool
+        self,
+        host: str,
+        port: int,
+        use_ssl: bool,
+        user: str,
+        password: str,
+        verify_ssl: bool,
     ) -> None:
         """Initialize."""
         self._logger = logging.getLogger(f"{__name__} ({host})")
@@ -150,13 +149,19 @@ class HuaweiCoreApi:
             error_code = data["err"]
             error_category = data.get("errorCategory", "unknown")
             self._logger.debug("Error data detected in the response. %s", data)
-            raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
+            raise ApiCallError(
+                "Api call returns unsuccessful result", error_code, error_category
+            )
 
         if "errcode" in data and data["errcode"] != 0:
             error_code = data["errcode"]
-            error_category = APICALL_ERRCAT_CSRF if data.get('csrf') == "Menu.csrf_err" else None
+            error_category = (
+                APICALL_ERRCAT_CSRF if data.get("csrf") == "Menu.csrf_err" else None
+            )
             self._logger.debug("Error code detected in the response. %s", data)
-            raise ApiCallError("Api call returns unsuccessful result", error_code, error_category)
+            raise ApiCallError(
+                "Api call returns unsuccessful result", error_code, error_category
+            )
 
     def _check_has_cookies(self, cookie_jar: AbstractCookieJar, url: URL) -> None:
         """check cookies"""
@@ -173,12 +178,14 @@ class HuaweiCoreApi:
     def _update_csrf(self, csrf_param: str, csrf_token: str) -> None:
         """Update the csrf parameters that needed to make the next request."""
         self._active_csrf = {"csrf_param": csrf_param, "csrf_token": csrf_token}
-        self._logger.debug("Csrf updated: param is '%s', token is '%s'", csrf_param, csrf_token)
+        self._logger.debug(
+            "Csrf updated: param is '%s', token is '%s'", csrf_param, csrf_token
+        )
 
     def _handle_csrf_dict(self, data: Dict) -> None:
         """Process the response dict and update csrf parameters if they exist in the response."""
         if "csrf_param" in data and "csrf_token" in data:
-            self._update_csrf(data["csrf_param"], data['csrf_token'])
+            self._update_csrf(data["csrf_param"], data["csrf_token"])
         else:
             self._logger.debug("No csrf data found in the response")
 
@@ -192,31 +199,43 @@ class HuaweiCoreApi:
         """Perform GET request to the specified relative URL and return raw ClientResponse."""
         try:
             self._logger.debug("Performing GET to %s", path)
-            response = await self._session.get(url=self._get_url(path),
-                                               allow_redirects=True,
-                                               verify_ssl=self._verify_ssl,
-                                               timeout=TIMEOUT)
+            response = await self._session.get(
+                url=self._get_url(path),
+                allow_redirects=True,
+                verify_ssl=self._verify_ssl,
+                timeout=TIMEOUT,
+            )
             self._logger.debug("GET %s performed, status: %s", path, response.status)
             return response
         except Exception as ex:
             self._logger.error("GET %s failed: %s", path, str(ex))
-            raise ApiCallError(f"Can not perform GET request at {path} cause of {repr(ex)}",
-                               APICALL_ERRCODE_REQUEST, APICALL_ERRCAT_REQUEST)
+            raise ApiCallError(
+                f"Can not perform GET request at {path} cause of {repr(ex)}",
+                APICALL_ERRCODE_REQUEST,
+                APICALL_ERRCAT_REQUEST,
+            )
 
     async def _post_raw(self, path: str, data: Dict) -> ClientResponse:
         """Perform POST request to the specified relative URL with specified body and return raw ClientResponse."""
         try:
-            self._logger.debug('Performing POST to %s', path)
-            response = await self._session.post(url=self._get_url(path),
-                                                data=json.dumps(data),
-                                                verify_ssl=self._verify_ssl,
-                                                timeout=TIMEOUT)
-            self._logger.debug('POST to %s performed, status: %s', path, response.status)
+            self._logger.debug("Performing POST to %s", path)
+            response = await self._session.post(
+                url=self._get_url(path),
+                data=json.dumps(data),
+                verify_ssl=self._verify_ssl,
+                timeout=TIMEOUT,
+            )
+            self._logger.debug(
+                "POST to %s performed, status: %s", path, response.status
+            )
             return response
         except Exception as ex:
             self._logger.error("POST %s failed: %s", path, str(ex))
-            raise ApiCallError(f'Can not perform POST request at {path} cause of {repr(ex)}',
-                               APICALL_ERRCODE_REQUEST, APICALL_ERRCAT_REQUEST)
+            raise ApiCallError(
+                f"Can not perform POST request at {path} cause of {repr(ex)}",
+                APICALL_ERRCODE_REQUEST,
+                APICALL_ERRCAT_REQUEST,
+            )
 
     def _refresh_session(self) -> None:
         """Initialize the client session (if not exists) and clear cookies."""
@@ -238,59 +257,88 @@ class HuaweiCoreApi:
             response = await self._get_raw("html/index.html#/login")
 
             if response.status != 200:
-                self._logger.error("Authentication failed: can not get index, status is %s", response.status)
+                self._logger.error(
+                    "Authentication failed: can not get index, status is %s",
+                    response.status,
+                )
                 raise AuthenticationError("Failed to get index", AUTH_FAILURE_GENERAL)
 
             result = await _get_response_text(response)
 
-            csrf_param = re.search('<meta name="csrf_param" content="(.+)"/>', result).group(1)
-            csrf_token = re.search('<meta name="csrf_token" content="(.+)"/>', result).group(1)
+            csrf_param = re.search(
+                '<meta name="csrf_param" content="(.+)"/>', result
+            ).group(1)
+            csrf_token = re.search(
+                '<meta name="csrf_token" content="(.+)"/>', result
+            ).group(1)
             self._update_csrf(csrf_param, csrf_token)
             self._check_has_cookies(self._session.cookie_jar, URL(self._base_url))
 
             first_nonce = randbytes(32).hex()
 
             self._logger.debug("Sending nonce")
-            response = await self._post_raw("api/system/user_login_nonce",
-                                            {"csrf": self._active_csrf,
-                                             "data": {"username": self._user, "firstnonce": first_nonce}})
+            response = await self._post_raw(
+                "api/system/user_login_nonce",
+                {
+                    "csrf": self._active_csrf,
+                    "data": {"username": self._user, "firstnonce": first_nonce},
+                },
+            )
             if response.status != 200:
-                self._logger.error("Authentication failed: can not send nonce, status is %s", response.status)
+                self._logger.error(
+                    "Authentication failed: can not send nonce, status is %s",
+                    response.status,
+                )
                 raise AuthenticationError("Failed to send nonce", AUTH_FAILURE_GENERAL)
 
             result = await _get_response_json(response)
             self._handle_csrf_dict(result)
             self._handle_error_dict(result)
 
-            server_nonce = result['servernonce']
-            iterations = int(result['iterations'])
-            salt = result['salt']
+            server_nonce = result["servernonce"]
+            iterations = int(result["iterations"])
+            salt = result["salt"]
 
             salted_password = hashlib.pbkdf2_hmac(
-                'sha256',
-                self._password.encode('utf-8'),
+                "sha256",
+                self._password.encode("utf-8"),
                 bytearray.fromhex(salt),
                 iterations,
-                32
+                32,
             )
 
-            auth_msg = first_nonce + ',' + server_nonce + ',' + server_nonce
-            client_key = hmac.new('Client Key'.encode('utf-8'), salted_password, hashlib.sha256).hexdigest()
+            auth_msg = first_nonce + "," + server_nonce + "," + server_nonce
+            client_key = hmac.new(
+                "Client Key".encode("utf-8"), salted_password, hashlib.sha256
+            ).hexdigest()
             stored_key = hashlib.sha256(bytearray.fromhex(client_key)).hexdigest()
-            client_signature = hmac.new(auth_msg.encode('utf-8'), bytearray.fromhex(stored_key),
-                                        hashlib.sha256).hexdigest()
+            client_signature = hmac.new(
+                auth_msg.encode("utf-8"), bytearray.fromhex(stored_key), hashlib.sha256
+            ).hexdigest()
 
             client_proof = bytes(
-                key ^ sign for (key, sign) in
-                zip(bytearray.fromhex(client_key), bytearray.fromhex(client_signature)))
+                key ^ sign
+                for (key, sign) in zip(
+                    bytearray.fromhex(client_key), bytearray.fromhex(client_signature)
+                )
+            )
 
             self._logger.debug("Sending proof")
-            response = await self._post_raw("api/system/user_login_proof",
-                                            {"csrf": self._active_csrf,
-                                             "data": {"clientproof": client_proof.hex(),
-                                                      "finalnonce": server_nonce}})
+            response = await self._post_raw(
+                "api/system/user_login_proof",
+                {
+                    "csrf": self._active_csrf,
+                    "data": {
+                        "clientproof": client_proof.hex(),
+                        "finalnonce": server_nonce,
+                    },
+                },
+            )
             if response.status != 200:
-                self._logger.error("Authentication failed: can not send proof, status is %s", response.status)
+                self._logger.error(
+                    "Authentication failed: can not send proof, status is %s",
+                    response.status,
+                )
                 raise AuthenticationError("Failed to send proof", AUTH_FAILURE_GENERAL)
 
             result = await _get_response_json(response)
@@ -300,23 +348,30 @@ class HuaweiCoreApi:
             self._logger.debug("Authentication success")
         except ApiCallError as ex:
             if ex.category == APICALL_ERRCAT_CREDENTIALS:
-                raise AuthenticationError("Invalid username or password", AUTH_FAILURE_CREDENTIALS)
+                raise AuthenticationError(
+                    "Invalid username or password", AUTH_FAILURE_CREDENTIALS
+                )
             if ex.category == APICALL_ERRCAT_CSRF:
                 raise AuthenticationError("CSRF error, try again", AUTH_FAILURE_CSRF)
 
             self._logger.warning("Authentication failed: %s", {repr(ex)})
-            raise AuthenticationError("Authentication failed due to api call error", AUTH_FAILURE_GENERAL)
+            raise AuthenticationError(
+                "Authentication failed due to api call error", AUTH_FAILURE_GENERAL
+            )
         except Exception as ex:
             self._logger.warning("Authentication failed: %s", {repr(ex)})
-            raise AuthenticationError("Authentication failed due to unknown error", AUTH_FAILURE_GENERAL)
+            raise AuthenticationError(
+                "Authentication failed due to unknown error", AUTH_FAILURE_GENERAL
+            )
 
     async def get(self, path: str, **kwargs: Any) -> Dict:
         """Perform GET request to the relative address."""
         async with self._call_locker:
             await self._ensure_initialized()
 
-            check_authorized: Callable[[ClientResponse, Dict], bool] = \
-                kwargs.get('check_authorized') or _check_authorized
+            check_authorized: Callable[[ClientResponse, Dict], bool] = (
+                kwargs.get("check_authorized") or _check_authorized
+            )
 
             response = await self._get_raw(path)
             result = await _get_response_json(response)
@@ -328,8 +383,11 @@ class HuaweiCoreApi:
                 result = await _get_response_json(response)
 
                 if not check_authorized(response, result):
-                    raise ApiCallError(f"Api call error, status:{response.status}",
-                                       APICALL_ERRCODE_UNAUTHORIZED, APICALL_ERRCAT_UNAUTHORIZED)
+                    raise ApiCallError(
+                        f"Api call error, status:{response.status}",
+                        APICALL_ERRCODE_UNAUTHORIZED,
+                        APICALL_ERRCAT_UNAUTHORIZED,
+                    )
 
             self._handle_csrf_dict(result)
             self._handle_error_dict(result)
@@ -340,12 +398,13 @@ class HuaweiCoreApi:
         async with self._call_locker:
             await self._ensure_initialized()
 
-            check_authorized: Callable[[ClientResponse, Dict | None], bool] = \
-                kwargs.get('check_authorized') or _check_authorized
+            check_authorized: Callable[[ClientResponse, Dict | None], bool] = (
+                kwargs.get("check_authorized") or _check_authorized
+            )
 
             dto = {"csrf": self._active_csrf, "data": payload}
-            if kwargs.get('extra_data') is not None:
-                for key, value in kwargs.get('extra_data', {}).items():
+            if kwargs.get("extra_data") is not None:
+                for key, value in kwargs.get("extra_data", {}).items():
                     dto[key] = value
 
             response = await self._post_raw(path, dto)
@@ -356,15 +415,18 @@ class HuaweiCoreApi:
                 await self.authenticate()
 
                 dto = {"csrf": self._active_csrf, "data": payload}
-                if kwargs.get('extra_data') is not None:
-                    for key, value in kwargs.get('extra_data', {}).items():
+                if kwargs.get("extra_data") is not None:
+                    for key, value in kwargs.get("extra_data", {}).items():
                         dto[key] = value
 
                 response = await self._post_raw(path, dto)
                 result = await _get_response_json(response)
                 if not check_authorized(response, result):
-                    raise ApiCallError(f"Api call error, status:{response.status}",
-                                       APICALL_ERRCODE_UNAUTHORIZED, APICALL_ERRCAT_UNAUTHORIZED)
+                    raise ApiCallError(
+                        f"Api call error, status:{response.status}",
+                        APICALL_ERRCODE_UNAUTHORIZED,
+                        APICALL_ERRCAT_UNAUTHORIZED,
+                    )
 
             self._handle_csrf_dict(result)
             self._handle_error_dict(result)

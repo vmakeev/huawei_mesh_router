@@ -39,6 +39,7 @@ ENTITY_DOMAIN: Final = "binary_sensor"
 @dataclass
 class HuaweiBinarySensorEntityDescription(BinarySensorEntityDescription):
     """A class that describes sensor entities."""
+
     function_name: str | None = None
     function_uid: str | None = None
     device_mac: MAC_ADDR | None = None
@@ -55,21 +56,26 @@ class HuaweiBinarySensorEntityDescription(BinarySensorEntityDescription):
 @dataclass
 class HuaweiWanSensorEntityDescription(HuaweiBinarySensorEntityDescription):
     """A class that describes sensor entities."""
+
     native_unit_of_measurement: str | None = None
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
-    device_class: BinarySensorDeviceClass | str | None = BinarySensorDeviceClass.CONNECTIVITY
+    device_class: BinarySensorDeviceClass | str | None = (
+        BinarySensorDeviceClass.CONNECTIVITY
+    )
 
 
 # ---------------------------
 #   async_setup_entry
 # ---------------------------
 async def async_setup_entry(
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
+        config_entry.entry_id
+    ][DATA_KEY_COORDINATOR]
 
     sensors = [
         HuaweiWanBinarySensor(
@@ -80,8 +86,9 @@ async def async_setup_entry(
                 device_mac=None,
                 device_name=coordinator.primary_router_name,
                 function_uid=_FUNCTION_UID_WAN,
-                function_name=_FUNCTION_DISPLAYED_NAME_WAN
-            ))
+                function_name=_FUNCTION_DISPLAYED_NAME_WAN,
+            ),
+        )
     ]
 
     async_add_entities(sensors)
@@ -90,28 +97,28 @@ async def async_setup_entry(
 # ---------------------------
 #   HuaweiBinarySensor
 # ---------------------------
-class HuaweiBinarySensor(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], BinarySensorEntity):
+class HuaweiBinarySensor(
+    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], BinarySensorEntity
+):
     entity_description: HuaweiBinarySensorEntityDescription
 
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiBinarySensorEntityDescription
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        description: HuaweiBinarySensorEntityDescription,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_device_info = coordinator.get_device_info(description.device_mac)
         self._attr_unique_id = generate_entity_unique_id(
-            coordinator,
-            description.function_uid,
-            description.device_mac
+            coordinator, description.function_uid, description.device_mac
         )
         self.entity_id = generate_entity_id(
             coordinator,
             ENTITY_DOMAIN,
             description.function_name,
-            description.device_name
+            description.device_name,
         )
 
     @property
@@ -133,9 +140,9 @@ class HuaweiWanBinarySensor(HuaweiBinarySensor):
     entity_description: HuaweiBinarySensorEntityDescription
 
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiBinarySensorEntityDescription
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        description: HuaweiBinarySensorEntityDescription,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator, description)
@@ -151,5 +158,7 @@ class HuaweiWanBinarySensor(HuaweiBinarySensor):
         self._attr_is_on = wan_info.connected
         self._attr_extra_state_attributes["external_ip"] = wan_info.address
         self._attr_extra_state_attributes["uptime_seconds"] = wan_info.uptime
-        self._attr_extra_state_attributes["connected_at"] = get_past_moment(wan_info.uptime)
+        self._attr_extra_state_attributes["connected_at"] = get_past_moment(
+            wan_info.uptime
+        )
         super()._handle_coordinator_update()

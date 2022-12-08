@@ -23,16 +23,21 @@ ENTITY_DOMAIN: Final = "select"
 
 _FUNCTION_DISPLAYED_NAME_WLAN_FILTER_MODE: Final = "WiFi access control mode"
 _FUNCTION_UID_WLAN_FILTER_MODE: Final = "wifi_access_control_mode"
-_OPTIONS_WLAN_FILTER_MODE: Final = [HuaweiWlanFilterMode.BLACKLIST, HuaweiWlanFilterMode.WHITELIST]
+_OPTIONS_WLAN_FILTER_MODE: Final = [
+    HuaweiWlanFilterMode.BLACKLIST,
+    HuaweiWlanFilterMode.WHITELIST,
+]
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up selects for Huawei Router component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
+        config_entry.entry_id
+    ][DATA_KEY_COORDINATOR]
 
     selects: list[HuaweiSelect] = [HuaweiWlanFilterModeSelect(coordinator)]
 
@@ -42,14 +47,15 @@ async def async_setup_entry(
 # ---------------------------
 #   HuaweiSelect
 # ---------------------------
-class HuaweiSelect(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SelectEntity, ABC):
-
+class HuaweiSelect(
+    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SelectEntity, ABC
+):
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            select_name: str,
-            device_mac: MAC_ADDR | None,
-            options: list[str]
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        select_name: str,
+        device_mac: MAC_ADDR | None,
+        options: list[str],
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
@@ -71,7 +77,9 @@ class HuaweiSelect(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Sel
 
     async def async_select_option(self, option: str) -> None:
         """Handle option changed."""
-        await self.coordinator.set_select_state(self._select_name, option, self._device_mac)
+        await self.coordinator.set_select_state(
+            self._select_name, option, self._device_mac
+        )
         self.async_write_ha_state()
 
     @final
@@ -86,27 +94,25 @@ class HuaweiSelect(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Sel
 #   HuaweiSelect
 # ---------------------------
 class HuaweiWlanFilterModeSelect(HuaweiSelect):
-
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
     ) -> None:
         """Initialize."""
-        super().__init__(coordinator, SELECT_WLAN_FILTER_MODE, None, _OPTIONS_WLAN_FILTER_MODE)
+        super().__init__(
+            coordinator, SELECT_WLAN_FILTER_MODE, None, _OPTIONS_WLAN_FILTER_MODE
+        )
         self._attr_name = generate_entity_name(
-            _FUNCTION_DISPLAYED_NAME_WLAN_FILTER_MODE,
-            coordinator.primary_router_name
+            _FUNCTION_DISPLAYED_NAME_WLAN_FILTER_MODE, coordinator.primary_router_name
         )
         self._attr_unique_id = generate_entity_unique_id(
-            coordinator,
-            _FUNCTION_UID_WLAN_FILTER_MODE,
-            None
+            coordinator, _FUNCTION_UID_WLAN_FILTER_MODE, None
         )
         self.entity_id = generate_entity_id(
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WLAN_FILTER_MODE,
-            coordinator.primary_router_name
+            coordinator.primary_router_name,
         )
         self._attr_icon = "mdi:account-cancel"
         self._attr_entity_registry_enabled_default = False

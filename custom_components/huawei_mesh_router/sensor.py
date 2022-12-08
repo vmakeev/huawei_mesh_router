@@ -54,6 +54,7 @@ ENTITY_DOMAIN: Final = "sensor"
 @dataclass
 class HuaweiSensorEntityDescription(SensorEntityDescription):
     """A class that describes sensor entities."""
+
     function_name: str | None = None
     function_uid: str | None = None
     device_mac: MAC_ADDR | None = None
@@ -70,6 +71,7 @@ class HuaweiSensorEntityDescription(SensorEntityDescription):
 @dataclass
 class HuaweiUptimeSensorEntityDescription(HuaweiSensorEntityDescription):
     """A class that describes sensor entities."""
+
     native_unit_of_measurement: str | None = None
     state_class: SensorStateClass | str | None = SensorStateClass.MEASUREMENT
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
@@ -82,6 +84,7 @@ class HuaweiUptimeSensorEntityDescription(HuaweiSensorEntityDescription):
 @dataclass
 class HuaweiClientsSensorEntityDescription(HuaweiSensorEntityDescription):
     """A class that describes clients count sensor entities."""
+
     native_unit_of_measurement: str | None = UNITS_CLIENTS
     state_class: SensorStateClass | str | None = SensorStateClass.MEASUREMENT
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
@@ -91,12 +94,14 @@ class HuaweiClientsSensorEntityDescription(HuaweiSensorEntityDescription):
 #   async_setup_entry
 # ---------------------------
 async def async_setup_entry(
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
+        config_entry.entry_id
+    ][DATA_KEY_COORDINATOR]
 
     sensors = [
         HuaweiUptimeSensor(
@@ -107,8 +112,9 @@ async def async_setup_entry(
                 device_mac=None,
                 device_name=coordinator.primary_router_name,
                 function_uid=_FUNCTION_UID_UPTIME,
-                function_name=_FUNCTION_DISPLAYED_NAME_UPTIME
-            )),
+                function_name=_FUNCTION_DISPLAYED_NAME_UPTIME,
+            ),
+        ),
         HuaweiConnectedDevicesSensor(
             coordinator,
             HuaweiClientsSensorEntityDescription(
@@ -117,9 +123,10 @@ async def async_setup_entry(
                 device_mac=None,
                 device_name=coordinator.primary_router_name,
                 function_uid=_FUNCTION_UID_TOTAL_CLIENTS,
-                function_name=_FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS
+                function_name=_FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS,
             ),
-            lambda device: device.is_active),
+            lambda device: device.is_active,
+        ),
         HuaweiConnectedDevicesSensor(
             coordinator,
             HuaweiClientsSensorEntityDescription(
@@ -128,9 +135,11 @@ async def async_setup_entry(
                 device_mac=None,
                 device_name=coordinator.primary_router_name,
                 function_uid=_FUNCTION_UID_CLIENTS,
-                function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS
+                function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS,
             ),
-            lambda device: device.is_active and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY)
+            lambda device: device.is_active
+            and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY,
+        ),
     ]
 
     async_add_entities(sensors)
@@ -151,13 +160,13 @@ async def async_setup_entry(
                 device_mac=mac,
                 device_name=router.name,
                 function_uid=_FUNCTION_UID_CLIENTS,
-                function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS
+                function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS,
             )
             entity = HuaweiConnectedDevicesSensor(
                 coordinator,
                 description,
-                lambda device, via_id=mac:
-                device.is_active and device.connected_via_id == via_id
+                lambda device, via_id=mac: device.is_active
+                and device.connected_via_id == via_id,
             )
             known_client_sensors[mac] = entity
             new_entities.append(entity)
@@ -169,7 +178,7 @@ async def async_setup_entry(
                 device_mac=mac,
                 device_name=router.name,
                 function_uid=_FUNCTION_UID_UPTIME,
-                function_name=_FUNCTION_DISPLAYED_NAME_UPTIME
+                function_name=_FUNCTION_DISPLAYED_NAME_UPTIME,
             )
             entity = HuaweiUptimeSensor(coordinator, description)
             known_uptime_sensors[mac] = entity
@@ -189,28 +198,28 @@ async def async_setup_entry(
 # ---------------------------
 #   HuaweiSensor
 # ---------------------------
-class HuaweiSensor(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity):
+class HuaweiSensor(
+    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity
+):
     entity_description: HuaweiSensorEntityDescription
 
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiSensorEntityDescription
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        description: HuaweiSensorEntityDescription,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_device_info = coordinator.get_device_info(description.device_mac)
         self._attr_unique_id = generate_entity_unique_id(
-            coordinator,
-            description.function_uid,
-            description.device_mac
+            coordinator, description.function_uid, description.device_mac
         )
         self.entity_id = generate_entity_id(
             coordinator,
             ENTITY_DOMAIN,
             description.function_name,
-            description.device_name
+            description.device_name,
         )
 
     @property
@@ -233,9 +242,9 @@ class HuaweiUptimeSensor(HuaweiSensor):
     _attr_native_value: datetime | None = None
 
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiUptimeSensorEntityDescription
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        description: HuaweiUptimeSensorEntityDescription,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator, description)
@@ -244,7 +253,9 @@ class HuaweiUptimeSensor(HuaweiSensor):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        router_info = self.coordinator.get_router_info(self.entity_description.device_mac)
+        router_info = self.coordinator.get_router_info(
+            self.entity_description.device_mac
+        )
         if not router_info:
             return
         uptime_seconds = router_info.uptime
@@ -261,10 +272,10 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
     _attr_native_value: int = 0
 
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            description: HuaweiClientsSensorEntityDescription,
-            devices_predicate: Callable[[ConnectedDevice], bool]
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        description: HuaweiClientsSensorEntityDescription,
+        devices_predicate: Callable[[ConnectedDevice], bool],
     ) -> None:
         """Initialize."""
         super().__init__(coordinator, description)

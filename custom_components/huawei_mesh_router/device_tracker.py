@@ -24,12 +24,14 @@ FILTER_ATTRS = ("ip_address", "connected_via_id", "vendor_class_id")
 #   async_setup_entry
 # ---------------------------
 async def async_setup_entry(
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up device tracker for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
+        config_entry.entry_id
+    ][DATA_KEY_COORDINATOR]
     tracked: dict[MAC_ADDR, HuaweiTracker] = {}
 
     @callback
@@ -47,9 +49,9 @@ async def async_setup_entry(
 # ---------------------------
 @callback
 def update_items(
-        coordinator: HuaweiControllerDataUpdateCoordinator,
-        async_add_entities: AddEntitiesCallback,
-        tracked: dict[MAC_ADDR, HuaweiTracker]
+    coordinator: HuaweiControllerDataUpdateCoordinator,
+    async_add_entities: AddEntitiesCallback,
+    tracked: dict[MAC_ADDR, HuaweiTracker],
 ) -> None:
     """Update tracked device state from the hub."""
     new_tracked: list[HuaweiTracker] = []
@@ -68,7 +70,11 @@ def update_items(
 class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     """Representation of network device."""
 
-    def __init__(self, device: ConnectedDevice, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
+    def __init__(
+        self,
+        device: ConnectedDevice,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+    ) -> None:
         """Initialize the tracked device."""
         self.device: ConnectedDevice = device
         super().__init__(coordinator)
@@ -106,7 +112,7 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     @property
     def unique_id(self) -> str:
         """Return an unique identifier for this device."""
-        return f'{self.coordinator.unique_id}_{self.device.mac}'
+        return f"{self.coordinator.unique_id}_{self.device.mac}"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

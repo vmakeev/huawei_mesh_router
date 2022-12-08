@@ -31,13 +31,15 @@ ENTITY_DOMAIN: Final = "button"
 # ---------------------------
 #   async_setup_entry
 # ---------------------------
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities
+) -> None:
     """Set up buttons for Huawei Router component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR]
+    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
+        config_entry.entry_id
+    ][DATA_KEY_COORDINATOR]
 
-    buttons = [
-        HuaweiRebootButton(coordinator, None)
-    ]
+    buttons = [HuaweiRebootButton(coordinator, None)]
 
     async_add_entities(buttons)
 
@@ -63,14 +65,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 # ---------------------------
 #   HuaweiButton
 # ---------------------------
-class HuaweiButton(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], ButtonEntity, ABC):
+class HuaweiButton(
+    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], ButtonEntity, ABC
+):
     _update_url: str
 
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            action_name: str,
-            device_mac: MAC_ADDR | None
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        action_name: str,
+        device_mac: MAC_ADDR | None,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
@@ -88,7 +92,9 @@ class HuaweiButton(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], But
         await super().async_added_to_hass()
         self._handle_coordinator_update()
         if self._device_mac:
-            _LOGGER.debug("Button %s (%s) added to hass", self._action_name, self._device_mac)
+            _LOGGER.debug(
+                "Button %s (%s) added to hass", self._action_name, self._device_mac
+            )
         else:
             _LOGGER.debug("Button %s added to hass", self._action_name)
 
@@ -112,11 +118,10 @@ class HuaweiButton(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], But
 #   HuaweiRebootButton
 # ---------------------------
 class HuaweiRebootButton(HuaweiButton):
-
     def __init__(
-            self,
-            coordinator: HuaweiControllerDataUpdateCoordinator,
-            device: ConnectedDevice | None
+        self,
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        device: ConnectedDevice | None,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator, ACTION_REBOOT, device.mac if device else None)
@@ -125,18 +130,17 @@ class HuaweiRebootButton(HuaweiButton):
 
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_REBOOT,
-            device.name if device else coordinator.primary_router_name
+            device.name if device else coordinator.primary_router_name,
         )
 
         self.entity_id = generate_entity_id(
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_REBOOT,
-            device.name if device else coordinator.primary_router_name)
+            device.name if device else coordinator.primary_router_name,
+        )
 
         self._attr_unique_id = generate_entity_unique_id(
-            coordinator,
-            _FUNCTION_UID_REBOOT,
-            device.mac if device else None
+            coordinator, _FUNCTION_UID_REBOOT, device.mac if device else None
         )
         self._attr_icon = "mdi:restart"

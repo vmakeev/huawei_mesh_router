@@ -76,7 +76,7 @@ Allows you to enable or disable access to the Wi-Fi network for individual clien
 
 ![Device access switch](images/switch_device_access.png)
 
-See [WiFi Access Control mode](#wifi-access-control-mode) for more information about blacklist and whitelist.
+See [Wi-Fi Access Control mode](#wi-fi-access-control-mode) for more information about blacklist and whitelist.
 
 One switch is created for each wireless client device in the mesh network:
 * `switch.<integration_name>_device_wifi_access_<device_name>`
@@ -89,7 +89,7 @@ _Note: these switches are not attached to a specific router device. Don't use th
 
 ## Selects
 
-### WiFi Access Control mode
+### Wi-Fi Access Control mode
 
 Allows you to set Wi-Fi access to blacklist or whitelist mode. In blacklist mode, devices in the list will not be able to access your router's Wi-Fi network. In whitelist mode, only devices in the list will be able to access your router's Wi-Fi network.
 

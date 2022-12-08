@@ -82,11 +82,11 @@ You can attach one or more tags to each client device in order to be able to use
 * Wi-Fi TWT switch ([read more](docs/controls.md#wi-fi-6-twt-switch))
 * Wi-Fi Access Control ([read more](docs/controls.md#wi-fi-access-control))
 * Reboot router ([read more](docs/controls.md#reboot))
-* Device Wi-Fi Access ([read more](docs/controls.md#device-wifi-access))
+* Device Wi-Fi Access ([read more](docs/controls.md#device-wi-fi-access))
 
 ### Selects
 
-* WiFi access control mode ([read more](docs/controls.md#wifi-access-control-mode))
+* Wi-Fi access control mode ([read more](docs/controls.md#wi-fi-access-control-mode))
 
 ## Services
 

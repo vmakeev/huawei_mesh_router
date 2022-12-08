@@ -42,27 +42,19 @@ class ServiceDescription:
 SERVICES = [
     ServiceDescription(
         name=ServiceNames.ADD_TO_WHITELIST,
-        schema=vol.Schema({
-            vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR
-        })
+        schema=vol.Schema({vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR}),
     ),
     ServiceDescription(
         name=ServiceNames.REMOVE_FROM_WHITELIST,
-        schema=vol.Schema({
-            vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR
-        })
+        schema=vol.Schema({vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR}),
     ),
     ServiceDescription(
         name=ServiceNames.ADD_TO_BLACKLIST,
-        schema=vol.Schema({
-            vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR
-        })
+        schema=vol.Schema({vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR}),
     ),
     ServiceDescription(
         name=ServiceNames.REMOVE_FROM_BLACKLIST,
-        schema=vol.Schema({
-            vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR
-        })
+        schema=vol.Schema({vol.Required(_FIELD_MAC_ADDRESS): _CV_MAC_ADDR}),
     ),
 ]
 
@@ -71,19 +63,22 @@ SERVICES = [
 #   _find_coordinator
 # ---------------------------
 def _find_coordinator(
-        hass: HomeAssistant,
-        device_mac: MAC_ADDR
+    hass: HomeAssistant, device_mac: MAC_ADDR
 ) -> HuaweiControllerDataUpdateCoordinator | None:
     _LOGGER.debug("Looking for coordinators with device '%s'", device_mac)
     for key, item in hass.data[DOMAIN].items():
         if key == DATA_KEY_SERVICES:
             continue
         coordinator = item.get(DATA_KEY_COORDINATOR)
-        if not coordinator or not isinstance(coordinator, HuaweiControllerDataUpdateCoordinator):
+        if not coordinator or not isinstance(
+            coordinator, HuaweiControllerDataUpdateCoordinator
+        ):
             continue
         for mac, connected_device in coordinator.connected_devices.items():
             if mac == device_mac:
-                _LOGGER.debug("Found coordinator %s for '%s'", coordinator.name, device_mac)
+                _LOGGER.debug(
+                    "Found coordinator %s for '%s'", coordinator.name, device_mac
+                )
                 return coordinator
 
 
@@ -97,8 +92,15 @@ async def _async_add_to_whitelist(hass: HomeAssistant, service: ServiceCall):
     if not coordinator:
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
-    _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.WHITELIST, FilterAction.ADD, device_mac)
+    _LOGGER.debug(
+        "Service '%s' called for device mac '%s' with %s",
+        service.service,
+        device_mac,
+        coordinator.name,
+    )
+    success = await coordinator.primary_router_api.apply_wlan_filter(
+        FilterMode.WHITELIST, FilterAction.ADD, device_mac
+    )
     if not success:
         _LOGGER.warning("Can not add item to whitelist")
 
@@ -113,8 +115,15 @@ async def _async_add_to_blacklist(hass: HomeAssistant, service: ServiceCall):
     if not coordinator:
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
-    _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.BLACKLIST, FilterAction.ADD, device_mac)
+    _LOGGER.debug(
+        "Service '%s' called for device mac '%s' with %s",
+        service.service,
+        device_mac,
+        coordinator.name,
+    )
+    success = await coordinator.primary_router_api.apply_wlan_filter(
+        FilterMode.BLACKLIST, FilterAction.ADD, device_mac
+    )
     if not success:
         _LOGGER.warning("Can not add item to blacklist")
 
@@ -129,8 +138,15 @@ async def _async_remove_from_whitelist(hass: HomeAssistant, service: ServiceCall
     if not coordinator:
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
-    _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.WHITELIST, FilterAction.REMOVE, device_mac)
+    _LOGGER.debug(
+        "Service '%s' called for device mac '%s' with %s",
+        service.service,
+        device_mac,
+        coordinator.name,
+    )
+    success = await coordinator.primary_router_api.apply_wlan_filter(
+        FilterMode.WHITELIST, FilterAction.REMOVE, device_mac
+    )
     if not success:
         _LOGGER.warning("Can not remove item from to whitelist")
 
@@ -145,8 +161,15 @@ async def _async_remove_from_blacklist(hass: HomeAssistant, service: ServiceCall
     if not coordinator:
         _LOGGER.warning("Can not find coordinator for mac address '%s'", device_mac)
         return
-    _LOGGER.debug("Service '%s' called for device mac '%s' with %s", service.service, device_mac, coordinator.name)
-    success = await coordinator.primary_router_api.apply_wlan_filter(FilterMode.BLACKLIST, FilterAction.REMOVE, device_mac)
+    _LOGGER.debug(
+        "Service '%s' called for device mac '%s' with %s",
+        service.service,
+        device_mac,
+        coordinator.name,
+    )
+    success = await coordinator.primary_router_api.apply_wlan_filter(
+        FilterMode.BLACKLIST, FilterAction.REMOVE, device_mac
+    )
     if not success:
         _LOGGER.warning("Can not remove item from to blacklist")
 
@@ -165,7 +188,10 @@ async def async_setup_services(hass: HomeAssistant, config_entry: ConfigEntry) -
     """Set up the Huawei Router services."""
     active_instances = _change_instances_count(hass, 1)
     if active_instances > 1:
-        _LOGGER.debug("%s active instances has already been registered, skipping", active_instances-1)
+        _LOGGER.debug(
+            "%s active instances has already been registered, skipping",
+            active_instances - 1,
+        )
         return
 
     @verify_domain_control(hass, DOMAIN)
