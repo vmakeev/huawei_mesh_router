@@ -44,7 +44,7 @@ class ConnectedDevice:
         self._mac: MAC_ADDR = mac
         self._is_active: bool = is_active
         self._tags: list[str] = tags
-        self._filter_mode: str = filter_mode
+        self._filter_mode: HuaweiWlanFilterMode | None = filter_mode
         self._data: Dict = kwargs or {}
 
     def update_device_data(self,
@@ -121,6 +121,11 @@ class ConnectedDevice:
     def tags(self) -> list[DEVICE_TAG]:
         """Return device tags list."""
         return self._tags
+
+    @property
+    def filter_mode(self) -> HuaweiWlanFilterMode | None:
+        """Return filter mode."""
+        return self._filter_mode
 
     @property
     def all_attrs(self) -> Iterable[Tuple[str, Any]]:

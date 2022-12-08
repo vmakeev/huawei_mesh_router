@@ -27,7 +27,10 @@ from .helpers import (
     generate_entity_unique_id,
     get_past_moment,
 )
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
+from .update_coordinator import (
+    ActiveRoutersWatcher,
+    HuaweiControllerDataUpdateCoordinator,
+)
 
 UNITS_CLIENTS: Final = "clients"
 
@@ -132,7 +135,7 @@ async def async_setup_entry(
 
     async_add_entities(sensors)
 
-    watcher: RoutersWatcher = RoutersWatcher()
+    watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
     known_client_sensors: dict[MAC_ADDR, HuaweiConnectedDevicesSensor] = {}
     known_uptime_sensors: dict[MAC_ADDR, HuaweiUptimeSensor] = {}
 
