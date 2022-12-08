@@ -15,7 +15,10 @@ from .client.classes import MAC_ADDR
 from .client.huaweiapi import ACTION_REBOOT
 from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
+from .update_coordinator import (
+    ActiveRoutersWatcher,
+    HuaweiControllerDataUpdateCoordinator,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
 
     async_add_entities(buttons)
 
-    watcher: RoutersWatcher = RoutersWatcher()
+    watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
     known_buttons: dict[MAC_ADDR, HuaweiButton] = {}
 
     @callback

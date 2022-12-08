@@ -26,7 +26,12 @@ from .client.huaweiapi import (
 )
 from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator, RoutersWatcher
+from .update_coordinator import (
+    SWITCH_DEVICE_ACCESS,
+    ActiveRoutersWatcher,
+    ClientWirelessDevicesWatcher,
+    HuaweiControllerDataUpdateCoordinator,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +46,9 @@ _FUNCTION_ID_WIFI_TWT: Final = "switch_wifi_twt"
 
 _FUNCTION_DISPLAYED_NAME_WLAN_FILTER: Final = "WiFi Access Control"
 _FUNCTION_ID_WLAN_FILTER: Final = "switch_wifi_access_control"
+
+_FUNCTION_DISPLAYED_NAME_DEVICE_ACCESS: Final = "Device WiFi Access"
+_FUNCTION_ID_DEVICE_ACCESS: Final = "switch_device_access"
 
 ENTITY_DOMAIN: Final = "switch"
 
@@ -62,6 +70,25 @@ async def _add_nfc_if_available(
             known_nfc_switches[mac] = entity
     else:
         _LOGGER.debug("Feature '%s' is not supported at %s", FEATURE_NFC, mac)
+
+
+# ---------------------------
+#   _add_access_switch_if_available
+# ---------------------------
+async def _add_access_switch_if_available(
+        coordinator: HuaweiControllerDataUpdateCoordinator,
+        known_access_switches: dict[MAC_ADDR, HuaweiSwitch],
+        mac: MAC_ADDR,
+        device: ConnectedDevice,
+        async_add_entities: AddEntitiesCallback
+) -> None:
+    if await coordinator.is_feature_available(FEATURE_WLAN_FILTER):
+        if not known_access_switches.get(mac):
+            entity = HuaweiDeviceAccessSwitch(coordinator, device)
+            async_add_entities([entity])
+            known_access_switches[mac] = entity
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", FEATURE_WLAN_FILTER)
 
 
 # ---------------------------
@@ -101,7 +128,7 @@ async def async_setup_entry(
 
     async_add_entities(switches)
 
-    watcher: RoutersWatcher = RoutersWatcher()
+    router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
     known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
 
     @callback
@@ -111,10 +138,21 @@ async def async_setup_entry(
             _add_nfc_if_available(coordinator, known_nfc_switches, device_mac, router, async_add_entities)
         )
 
+    device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher()
+    known_access_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
+
+    @callback
+    def on_wireless_device_added(device_mac: MAC_ADDR, device: ConnectedDevice) -> None:
+        """When a new mesh router is detected."""
+        hass.async_add_job(
+            _add_access_switch_if_available(coordinator, known_access_switches, device_mac, device, async_add_entities)
+        )
+
     @callback
     def coordinator_updated() -> None:
         """Update the status of the device."""
-        watcher.look_for_changes(coordinator, on_router_added)
+        router_watcher.look_for_changes(coordinator, on_router_added)
+        device_watcher.look_for_changes(coordinator, on_wireless_device_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
 
@@ -148,7 +186,7 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self.coordinator.is_router_online(self._device_mac)
+        return self.coordinator.is_router_online(self._device_mac) and self.is_on is not None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -156,9 +194,9 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
         super()._handle_coordinator_update()
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return current status."""
-        return self.coordinator.get_switch_state(self._switch_name, self._device_mac) or False
+        return self.coordinator.get_switch_state(self._switch_name, self._device_mac)
 
     async def _go_to_state(self, state: bool):
         """Perform transition to the specified state."""
@@ -302,3 +340,38 @@ class HuaweiWlanFilterSwitch(HuaweiSwitch):
         """Perform transition to the specified state."""
         await super()._go_to_state(state)
         self.coordinator.async_update_listeners()
+
+
+# ---------------------------
+#   HuaweiDeviceAccessSwitch
+# ---------------------------
+class HuaweiDeviceAccessSwitch(HuaweiSwitch):
+
+    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator, device: ConnectedDevice) -> None:
+        """Initialize."""
+        super().__init__(coordinator, SWITCH_DEVICE_ACCESS, device.mac)
+        self._attr_device_info = None
+
+        self._attr_name = generate_entity_name(
+            _FUNCTION_DISPLAYED_NAME_DEVICE_ACCESS,
+            device.name
+        )
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator,
+            _FUNCTION_ID_DEVICE_ACCESS,
+            device.mac
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_DEVICE_ACCESS,
+            device.name
+        )
+        self._attr_icon = "mdi:account-lock"
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not self.coordinator.get_switch_state(SWITCH_WLAN_FILTER):
+            return False
+        return self.coordinator.is_router_online() and self.is_on is not None

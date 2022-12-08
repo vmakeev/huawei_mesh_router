@@ -117,3 +117,9 @@ class HuaweiWlanFilterModeSelect(HuaweiSelect):
         if not self.coordinator.get_switch_state(SWITCH_WLAN_FILTER):
             return False
         return super().available
+
+    async def async_select_option(self, option: str) -> None:
+        """Handle option changed."""
+        await super().async_select_option(option)
+        await self.coordinator.calculate_device_access_switch_states()
+        self.coordinator.async_update_listeners()

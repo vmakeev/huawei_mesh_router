@@ -16,6 +16,10 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
   - device connection parameters (frequency, signal strength, guest and hilink devices)
   - name of the specific router to which the device is connected
   - number of connected devices (total and for each individual router)
+- Wi-Fi access management:
+  - enable or disable Wi-Fi access control
+  - add/remove devices from blacklist/whitelist
+  - Wi-Fi access switch per client device
 - hardware and firmware version of the primary router
 - internet connection details
 - uptime of each router
@@ -39,7 +43,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 ### Manual
 
-Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant. The final path to folder should look like this: `<home-assistant-config-folder>/custom_components/huawei_mesh_router`
+Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakeev/huawei_mesh_router/releases/latest) to `custom_components` folder in your Home Assistant config folder and restart Home Assistant. The final path to folder should look like this: `<home-assistant-config-folder>/custom_components/huawei_mesh_router`.
 
 ### HACS
 
@@ -76,3 +80,17 @@ You can attach one or more tags to each client device in order to be able to use
 * NFC switch ([read more](docs/controls.md#nfc-switch))
 * Wi-Fi 802.11r switch ([read more](docs/controls.md#wi-fi-80211r-switch))
 * Wi-Fi TWT switch ([read more](docs/controls.md#wi-fi-6-twt-switch))
+* Wi-Fi Access Control ([read more](docs/controls.md#wi-fi-access-control))
+* Reboot router ([read more](docs/controls.md#reboot))
+* Device Wi-Fi Access ([read more](docs/controls.md#device-wifi-access))
+
+### Selects
+
+* WiFi access control mode ([read more](docs/controls.md#wifi-access-control-mode))
+
+## Services
+
+* Add device to the whitelist ([read more](docs/services.md#add-device-to-the-whitelist))
+* Add device to the blacklist ([read more](docs/services.md#add-device-to-the-blacklist))
+* Remove device from the whitelist ([read more](docs/services.md#remove-device-from-the-whitelist))
+* Remove device from the blacklist ([read more](docs/services.md#remove-device-from-the-blacklist))
