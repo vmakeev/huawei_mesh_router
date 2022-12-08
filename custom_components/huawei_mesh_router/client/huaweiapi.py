@@ -2,32 +2,40 @@
 
 from functools import wraps
 import logging
-from typing import Any, Iterable
+from typing import Any, Final, Iterable
 
 from aiohttp import ClientResponse
 
-from .classes import HuaweiClientDevice, HuaweiDeviceNode, HuaweiRouterInfo
+from .classes import (
+    HuaweiClientDevice,
+    HuaweiConnectionInfo,
+    HuaweiDeviceNode,
+    HuaweiRouterInfo,
+)
 from .coreapi import APICALL_ERRCAT_UNAUTHORIZED, ApiCallError, HuaweiCoreApi
 
-SWITCH_NFC = "nfc_switch"
-SWITCH_WIFI_80211R = "wifi_80211r_switch"
-SWITCH_WIFI_TWT = "wifi_twt_switch"
+SWITCH_NFC: Final = "nfc_switch"
+SWITCH_WIFI_80211R: Final = "wifi_80211r_switch"
+SWITCH_WIFI_TWT: Final = "wifi_twt_switch"
 
-ACTION_REBOOT = "reboot_action"
+ACTION_REBOOT: Final = "reboot_action"
 
-CONNECTED_VIA_ID_PRIMARY = "primary"
+CONNECTED_VIA_ID_PRIMARY: Final = "primary"
 
-FEATURE_NFC = "feature_nfc"
-FEATURE_WIFI_80211R = "feature_wifi_80211r"
-FEATURE_WIFI_TWT = "feature_wifi_twt"
+FEATURE_NFC: Final = "feature_nfc"
+FEATURE_WIFI_80211R: Final = "feature_wifi_80211r"
+FEATURE_WIFI_TWT: Final = "feature_wifi_twt"
 
-_URL_DEVICE_INFO = "api/system/deviceinfo"
-_URL_HOST_INFO = "api/system/HostInfo"
-_URL_DEVICE_TOPOLOGY = "api/device/topology"
-_URL_SWITCH_NFC = "api/bsp/nfc_switch"
-_URL_SWITCH_WIFI_80211R = "api/ntwk/WlanGuideBasic?type=notshowpassall"
-_URL_SWITCH_WIFI_TWT = "api/ntwk/WlanGuideBasic?type=notshowpassall"
-_URL_REBOOT = "api/service/reboot.cgi"
+_URL_DEVICE_INFO: Final = "api/system/deviceinfo"
+_URL_HOST_INFO: Final = "api/system/HostInfo"
+_URL_DEVICE_TOPOLOGY: Final = "api/device/topology"
+_URL_SWITCH_NFC: Final = "api/bsp/nfc_switch"
+_URL_SWITCH_WIFI_80211R: Final = "api/ntwk/WlanGuideBasic?type=notshowpassall"
+_URL_SWITCH_WIFI_TWT: Final = "api/ntwk/WlanGuideBasic?type=notshowpassall"
+_URL_REBOOT: Final = "api/service/reboot.cgi"
+_URL_WANDETECT: Final = "api/ntwk/wandetect"
+
+_STATUS_CONNECTED: Final = "Connected"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -179,6 +187,14 @@ class HuaweiApi:
             return False
         return True
 
+    @staticmethod
+    def _wan_info_check_authorized(response: ClientResponse, result: dict[str, Any]) -> bool:
+        if response.status == 404:
+            return False
+        if result is None or result.get("ExternalIPAddress", "-") == "-":
+            return False
+        return True
+
     async def get_router_info(self) -> HuaweiRouterInfo:
         """Return the router information."""
         data = await self._core_api.get(
@@ -192,7 +208,20 @@ class HuaweiApi:
             serial_number=data.get("SerialNumber"),
             software_version=data.get("SoftwareVersion"),
             hardware_version=data.get("HardwareVersion"),
-            harmony_os_version=data.get('HarmonyOSVersion')
+            harmony_os_version=data.get('HarmonyOSVersion'),
+            uptime=data.get('UpTime')
+        )
+
+    async def get_wan_connection_info(self) -> HuaweiConnectionInfo:
+        data = await self._core_api.get(
+            _URL_WANDETECT,
+            check_authorized=HuaweiApi._wan_info_check_authorized
+        )
+
+        return HuaweiConnectionInfo(
+            uptime=data.get("Uptime", 0),
+            connected=data.get("Status") == _STATUS_CONNECTED,
+            address=data.get("ExternalIPAddress")
         )
 
     async def get_switch_state(self, name: str) -> bool:

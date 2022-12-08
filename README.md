@@ -17,6 +17,8 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
   - name of the specific router to which the device is connected
   - [number of connected devices](#number-of-connected-devices) (total and for each individual router)
 - hardware and firmware version of the primary router
+- [internet connection details](#internet-connection)
+- [uptime](#uptime) of each router
 - control of the [NFC](#nfc-switch) (OneHop Connect) on each router separately
 - control of the [Fast Roaming](#wi-fi-80211r-switch) function (802.11r)
 - control of the [Target Wake Time](#wi-fi-twt-switch) (reduce power consumption of Wi-Fi 6 devices in sleep mode)
@@ -109,6 +111,43 @@ Each sensor exposes the following attributes:
 | `wifi_5_clients`             | Number of devices connected to Wi-Fi 5 GHz                                   |
 | `tagged_<tag_name>_clients`  | Number of connected devices with a specific [tag](#device-tags) `<tag_name>` |
 | `untagged_clients`           | Number of connected devices without any [tags](#device-tags)                 |
+
+### Uptime
+
+The component allows you to get the uptime of each router in your mesh network. 
+The sensor value is the date and time when the router was last turned on.
+
+There is one sensor that is always present:
+* `sensor.<integration_name>_uptime_primary_router`
+
+Also, one sensor is created for each additional router in the mesh network:
+* `sensor.<integration_name>_uptime_<router_name>`
+
+_Note: Sensors for additional routers are located in their own devices._
+
+Each sensor exposes the following attributes:
+
+|     Attribute        |                        Description                          |
+|----------------------|-------------------------------------------------------------|
+| `seconds`            | Uptime of the router in seconds                             |
+
+### Internet connection
+
+The component is able to track information about the connection of the router to the Internet.
+The sensor is in the "on" state if the Internet connection is established.
+
+There is one sensor that is always present:
+* `binary_sensor.<integration_name>_internet_connection_primary_router`
+
+_Note: Sensors for additional routers are located in their own devices._
+
+Each sensor exposes the following attributes:
+
+|     Attribute        |                        Description                          |
+|----------------------|-------------------------------------------------------------|
+| `external_ip`        | WAN IP address                                              |
+| `uptime_seconds`     | Connection uptime in seconds                                |
+| `connected_at`       | The date and time when the connection was last established  |
 
 ## Buttons
 
