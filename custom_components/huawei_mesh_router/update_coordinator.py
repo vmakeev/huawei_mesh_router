@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any, Callable, Final, Iterable, Tuple
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -23,13 +23,15 @@ from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .classes import DEVICE_TAG, ConnectedDevice
+from .classes import DEVICE_TAG, ConnectedDevice, HuaweiWlanFilterMode
 from .client.classes import (
     MAC_ADDR,
     NODE_HILINK_TYPE_DEVICE,
+    FilterMode,
     HuaweiClientDevice,
     HuaweiConnectionInfo,
     HuaweiDeviceNode,
+    HuaweiFilterInfo,
     HuaweiRouterInfo,
 )
 from .client.huaweiapi import (
@@ -37,16 +39,20 @@ from .client.huaweiapi import (
     FEATURE_NFC,
     FEATURE_WIFI_80211R,
     FEATURE_WIFI_TWT,
+    FEATURE_WLAN_FILTER,
     SWITCH_NFC,
     SWITCH_WIFI_80211R,
     SWITCH_WIFI_TWT,
+    SWITCH_WLAN_FILTER,
     HuaweiApi,
 )
 from .const import ATTR_MANUFACTURER, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-_PRIMARY_ROUTER_IDENTITY = "primary_router"
+_PRIMARY_ROUTER_IDENTITY: Final = "primary_router"
+
+SELECT_WLAN_FILTER_MODE: Final = "wlan_filter_mode_select"
 
 
 class CoordinatorError(Exception):
@@ -204,7 +210,9 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             )
         }
         self._router_infos: dict[MAC_ADDR, HuaweiRouterInfo] = {}
-        self._switch_states: dict[MAC_ADDR, bool] = {}
+        self._switch_states: dict[str, bool] = {}
+        self._select_states: dict[str, str] = {}
+        self._wlan_filter_info: HuaweiFilterInfo | None = None
 
         super().__init__(
             hass,
@@ -303,8 +311,10 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_apis()
         await self._update_router_infos()
         await self._update_wan_info()
-        await self._update_switches()
+        await self._update_wlan_filter_info()
         await self._update_connected_devices()
+        await self._update_switches()
+        await self._update_selects()
         _LOGGER.debug("Update completed")
 
     async def _update_wan_info(self) -> None:
@@ -314,6 +324,20 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as ex:
             _LOGGER.error("Can not update wan info: %s", str(ex))
         _LOGGER.debug("Wan info updated")
+
+    async def _update_wlan_filter_info(self) -> None:
+        _LOGGER.debug("Updating wlan filter info")
+        try:
+            primary_api = self.primary_router_api
+            if await primary_api.is_feature_available(FEATURE_WIFI_80211R):
+                _, info_5g = await primary_api.get_wlan_filter_info()
+                # ignore 2.4GHz information
+                self._wlan_filter_info = info_5g
+            else:
+                self._wlan_filter_info = None
+        except Exception as ex:
+            _LOGGER.error("Can not update wlan filter info: %s", str(ex))
+        _LOGGER.debug("Wlan filter info updated")
 
     async def _update_router_infos(self) -> None:
         """Asynchronous update of routers information."""
@@ -359,8 +383,33 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         self._routersWatcher.look_for_changes(self, on_router_added, on_router_removed)
 
+    async def _update_selects(self) -> None:
+        """Asynchronous update of selects states."""
+        _LOGGER.debug("Updating selects states")
+
+        primary_api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
+
+        new_states: dict[str, str] = {}
+
+        if await primary_api.is_feature_available(FEATURE_WLAN_FILTER):
+            mode = self._wlan_filter_info.mode if self._wlan_filter_info else None
+            if mode is None:
+                state = None
+            elif mode == FilterMode.WHITELIST:
+                state = HuaweiWlanFilterMode.WHITELIST
+            elif mode == FilterMode.BLACKLIST:
+                state = HuaweiWlanFilterMode.BLACKLIST
+            else:
+                _LOGGER.debug("Unsupported FilterMode %s", mode)
+                state = None
+            new_states[SELECT_WLAN_FILTER_MODE] = state
+            _LOGGER.debug("WLan filter mode select state updated to %s", state)
+
+        _LOGGER.debug("Selects states updated")
+        self._select_states = new_states
+
     async def _update_switches(self) -> None:
-        """Asynchronous update of NFC switch state."""
+        """Asynchronous update of switch states."""
         _LOGGER.debug("Updating switches states")
 
         primary_api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
@@ -381,6 +430,11 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             state = await primary_api.get_switch_state(SWITCH_NFC)
             new_states[SWITCH_NFC] = state
             _LOGGER.debug("Nfc switch (primary router) state updated to %s", state)
+
+        if await primary_api.is_feature_available(FEATURE_WLAN_FILTER):
+            state = await primary_api.get_switch_state(SWITCH_WLAN_FILTER)
+            new_states[SWITCH_WLAN_FILTER] = state
+            _LOGGER.debug("WLan filter switch state updated to %s", state)
 
         for mac, api in self._apis.items():
             device = self._connected_devices.get(mac)
@@ -430,6 +484,14 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                     "id": router.mac_address
                 }
 
+        # [MAC_ADDRESS_OF_DEVICE, Whitelist | Blacklist]
+        devices_to_filters: dict[MAC_ADDR, HuaweiWlanFilterMode] = {}
+        if self._wlan_filter_info:
+            for blacklisted in self._wlan_filter_info.blacklist:
+                devices_to_filters[blacklisted.mac_address] = HuaweiWlanFilterMode.BLACKLIST
+            for whitelisted in self._wlan_filter_info.whitelist:
+                devices_to_filters[whitelisted.mac_address] = HuaweiWlanFilterMode.WHITELIST
+
         if not self._tags_map.is_loaded:
             await self._tags_map.load()
 
@@ -439,11 +501,12 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             name: str = device_data.actual_name or host_name
             is_active: bool = device_data.is_active
             tags = self._tags_map.get_tags(mac)
+            filter_mode = devices_to_filters.get(mac)
 
             if mac in self._connected_devices:
                 device = self._connected_devices[mac]
             else:
-                device = ConnectedDevice(name, host_name, mac, is_active, tags)
+                device = ConnectedDevice(name, host_name, mac, is_active, tags, filter_mode)
                 self._connected_devices[device.mac] = device
 
             if is_active:
@@ -453,7 +516,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                                                            "name": self.primary_router_name,
                                                            "id": CONNECTED_VIA_ID_PRIMARY
                                                        })
-                device.update_device_data(name, host_name, True, tags,
+                device.update_device_data(name, host_name, True, tags, filter_mode,
                                           connected_via=connected_via.get("name"),
                                           ip_address=device_data.ip_address,
                                           interface_type=device_data.interface_type,
@@ -464,7 +527,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                                           connected_via_id=connected_via.get("id")
                                           )
             else:
-                device.update_device_data(name, host_name, False, tags)
+                device.update_device_data(name, host_name, False, tags, filter_mode)
 
         _LOGGER.debug("Connected devices updated")
 
@@ -491,6 +554,28 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         await api.set_switch_state(switch_name, state)
         key = switch_name if not device_mac else f'{switch_name}_{device_mac}'
         self._switch_states[key] = state
+
+    def get_select_state(self, select_name: str, device_mac: MAC_ADDR | None = None) -> str | None:
+        """Return the state of the specified select."""
+        key = select_name if not device_mac else f'{select_name}_{device_mac}'
+        return self._select_states.get(key)
+
+    async def set_select_state(self, select_name: str, state: str, device_mac: MAC_ADDR | None = None) -> None:
+        """Set state of the specified select."""
+        api = self._select_api(device_mac)
+
+        if select_name == SELECT_WLAN_FILTER_MODE and await api.is_feature_available(FEATURE_WLAN_FILTER):
+            if state == HuaweiWlanFilterMode.BLACKLIST:
+                await api.set_wlan_filter_mode(FilterMode.BLACKLIST)
+            elif state == HuaweiWlanFilterMode.WHITELIST:
+                await api.set_wlan_filter_mode(FilterMode.WHITELIST)
+            else:
+                raise CoordinatorError(f"Unsupported HuaweiWlanFilterMode: {state}")
+        else:
+            raise CoordinatorError(f"Unsupported select name: {select_name}")
+
+        key = select_name if not device_mac else f'{select_name}_{device_mac}'
+        self._select_states[key] = state
 
     async def execute_action(self, action_name: str, device_mac: MAC_ADDR | None = None) -> None:
         """Perform the specified action."""

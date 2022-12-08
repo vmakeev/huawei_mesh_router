@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Any, Dict, Final, Iterable, TypeAlias
 
 VENDOR_CLASS_ID_ROUTER: Final = "router"
@@ -15,19 +15,89 @@ MAC_ADDR: TypeAlias = str
 
 
 # ---------------------------
-#   FilterType
-# ---------------------------
-class FilterType(Enum):
-    WHITELIST = 0,
-    BLACKLIST = 1,
-
-
-# ---------------------------
-#   FilterType
+#   FilterAction
 # ---------------------------
 class FilterAction(Enum):
     ADD = 0,
     REMOVE = 1,
+
+
+# ---------------------------
+#   FilterMode
+# ---------------------------
+class FilterMode(IntEnum):
+    BLACKLIST = 0,
+    WHITELIST = 1,
+
+
+# ---------------------------
+#   HuaweiFilterItem
+# ---------------------------
+@dataclass()
+class HuaweiFilterItem:
+    mac_address: MAC_ADDR
+    name: str | None = None
+
+
+# ---------------------------
+#   HuaweiFilterItem
+# ---------------------------
+class HuaweiFilterInfo:
+
+    def __init__(
+            self,
+            enabled: bool,
+            whitelist: list[HuaweiFilterItem],
+            blacklist: list[HuaweiFilterItem],
+            mode: FilterMode
+    ) -> None:
+        self._enabled = enabled
+        self._whitelist = whitelist
+        self._blacklist = blacklist
+        self._mode = mode
+
+    @classmethod
+    def parse(cls, raw_data: dict[str, any]) -> HuaweiFilterInfo:
+        raw_enabled = raw_data.get("MACAddressControlEnabled")
+        enabled = isinstance(raw_enabled, bool) and raw_enabled
+
+        raw_mode = raw_data.get("MacFilterPolicy")
+        if raw_mode == 0:
+            mode = FilterMode.BLACKLIST
+        elif raw_mode == 1:
+            mode = FilterMode.WHITELIST
+        else:
+            raise ValueError("MacFilterPolicy must be in range [0..1]")
+
+        def get_item(raw_item: dict[str, any]) -> HuaweiFilterItem:
+            return HuaweiFilterItem(
+                name=raw_item.get("HostName"),
+                mac_address=raw_item.get("MACAddress")
+            )
+
+        raw_whitelist = raw_data.get("WMACAddresses")
+        whitelist = [get_item(item) for item in raw_whitelist]
+
+        raw_blacklist = raw_data.get("BMACAddresses")
+        blacklist = [get_item(item) for item in raw_blacklist]
+
+        return HuaweiFilterInfo(enabled, whitelist, blacklist, mode)
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def mode(self) -> FilterMode:
+        return self._mode
+
+    @property
+    def whitelist(self) -> Iterable[HuaweiFilterItem]:
+        return self._whitelist
+
+    @property
+    def blacklist(self) -> Iterable[HuaweiFilterItem]:
+        return self._blacklist
 
 
 # ---------------------------

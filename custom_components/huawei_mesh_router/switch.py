@@ -18,9 +18,11 @@ from .client.huaweiapi import (
     FEATURE_NFC,
     FEATURE_WIFI_80211R,
     FEATURE_WIFI_TWT,
+    FEATURE_WLAN_FILTER,
     SWITCH_NFC,
     SWITCH_WIFI_80211R,
     SWITCH_WIFI_TWT,
+    SWITCH_WLAN_FILTER,
 )
 from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
@@ -36,6 +38,9 @@ _FUNCTION_UID_WIFI_802_11_R: Final = "switch_wifi_802_11_r"
 
 _FUNCTION_DISPLAYED_NAME_WIFI_TWT: Final = "WiFi 6 TWT"
 _FUNCTION_ID_WIFI_TWT: Final = "switch_wifi_twt"
+
+_FUNCTION_DISPLAYED_NAME_WLAN_FILTER: Final = "WiFi Access Control"
+_FUNCTION_ID_WLAN_FILTER: Final = "switch_wifi_access_control"
 
 ENTITY_DOMAIN: Final = "switch"
 
@@ -88,6 +93,11 @@ async def async_setup_entry(
         switches.append(HuaweiWifiTWTSwitch(coordinator))
     else:
         _LOGGER.debug("Feature '%s' is not supported", FEATURE_WIFI_TWT)
+
+    if await coordinator.is_feature_available(FEATURE_WLAN_FILTER):
+        switches.append(HuaweiWlanFilterSwitch(coordinator))
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", FEATURE_WLAN_FILTER)
 
     async_add_entities(switches)
 
@@ -150,18 +160,18 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], Swi
         """Return current status."""
         return self.coordinator.get_switch_state(self._switch_name, self._device_mac) or False
 
-    async def __go_to_state(self, state: bool):
+    async def _go_to_state(self, state: bool):
         """Perform transition to the specified state."""
         await self.coordinator.set_switch_state(self._switch_name, state, self._device_mac)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """async_turn_off."""
-        await self.__go_to_state(False)
+        await self._go_to_state(False)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """async_turn_on."""
-        await self.__go_to_state(True)
+        await self._go_to_state(True)
 
     def turn_on(self, **kwargs: Any) -> None:
         """turn_on."""
@@ -260,3 +270,35 @@ class HuaweiWifiTWTSwitch(HuaweiSwitch):
             coordinator.primary_router_name
         )
         self._attr_icon = "mdi:wifi-settings"
+
+
+# ---------------------------
+#   HuaweiWlanFilterSwitch
+# ---------------------------
+class HuaweiWlanFilterSwitch(HuaweiSwitch):
+
+    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator, SWITCH_WLAN_FILTER, None)
+
+        self._attr_name = generate_entity_name(
+            _FUNCTION_DISPLAYED_NAME_WLAN_FILTER,
+            coordinator.primary_router_name
+        )
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator,
+            _FUNCTION_ID_WLAN_FILTER
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_WLAN_FILTER,
+            coordinator.primary_router_name
+        )
+        self._attr_icon = "mdi:access-point-check"
+        self._attr_entity_registry_enabled_default = False
+
+    async def _go_to_state(self, state: bool):
+        """Perform transition to the specified state."""
+        await super()._go_to_state(state)
+        self.coordinator.async_update_listeners()

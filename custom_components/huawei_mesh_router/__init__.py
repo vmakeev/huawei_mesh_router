@@ -6,13 +6,7 @@ from homeassistant.helpers import config_validation
 from homeassistant.helpers.storage import Store
 
 from .client.huaweiapi import HuaweiApi
-from .const import (
-    DATA_KEY_API,
-    DATA_KEY_COORDINATOR,
-    DOMAIN,
-    PLATFORMS,
-    STORAGE_VERSION,
-)
+from .const import DATA_KEY_COORDINATOR, DOMAIN, PLATFORMS, STORAGE_VERSION
 from .services import async_setup_services, async_unload_services
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
