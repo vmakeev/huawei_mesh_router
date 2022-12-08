@@ -51,14 +51,13 @@ _LOGGER = logging.getLogger(__name__)
 #   UnsupportedActionError
 # ---------------------------
 class UnsupportedActionError(Exception):
-
     def __init__(self, message: str) -> None:
         """Initialize."""
         super().__init__(message)
         self._message = message
 
     def __str__(self, *args, **kwargs) -> str:
-        """ Return str(self). """
+        """Return str(self)."""
         return self._message
 
 
@@ -66,14 +65,13 @@ class UnsupportedActionError(Exception):
 #   InvalidActionError
 # ---------------------------
 class InvalidActionError(Exception):
-
     def __init__(self, message: str) -> None:
         """Initialize."""
         super().__init__(message)
         self._message = message
 
     def __str__(self, *args, **kwargs) -> str:
-        """ Return str(self). """
+        """Return str(self)."""
         return self._message
 
 
@@ -114,7 +112,9 @@ class HuaweiFeaturesDetector:
                         _LOGGER.debug("Feature '%s' is not available", feature_name)
                     return result
                 except Exception:
-                    _LOGGER.debug("Feature availability check failed on %s", feature_name)
+                    _LOGGER.debug(
+                        "Feature availability check failed on %s", feature_name
+                    )
                     raise
 
             return wrapper
@@ -125,19 +125,19 @@ class HuaweiFeaturesDetector:
     @unauthorized_as_false
     async def _is_nfc_available(self) -> bool:
         data = await self._core_api.get(_URL_SWITCH_NFC)
-        return data.get('nfcSwitch') is not None
+        return data.get("nfcSwitch") is not None
 
     @log_feature(FEATURE_WIFI_80211R)
     @unauthorized_as_false
     async def _is_wifi_80211r_available(self) -> bool:
         data = await self._core_api.get(_URL_SWITCH_WIFI_80211R)
-        return data.get('WifiConfig', [{}])[0].get('Dot11REnable') is not None
+        return data.get("WifiConfig", [{}])[0].get("Dot11REnable") is not None
 
     @log_feature(FEATURE_WIFI_TWT)
     @unauthorized_as_false
     async def _is_wifi_twt_available(self) -> bool:
         data = await self._core_api.get(_URL_SWITCH_WIFI_TWT)
-        return data.get('WifiConfig', [{}])[0].get('TWTEnable') is not None
+        return data.get("WifiConfig", [{}])[0].get("TWTEnable") is not None
 
     @log_feature(FEATURE_WLAN_FILTER)
     @unauthorized_as_false
@@ -168,15 +168,14 @@ class HuaweiFeaturesDetector:
 #   HuaweiApi
 # ---------------------------
 class HuaweiApi:
-
     def __init__(
-            self,
-            host: str,
-            port: int,
-            use_ssl: bool,
-            user: str,
-            password: str,
-            verify_ssl: bool
+        self,
+        host: str,
+        port: int,
+        use_ssl: bool,
+        user: str,
+        password: str,
+        verify_ssl: bool,
     ) -> None:
         """Initialize."""
         self._core_api = HuaweiCoreApi(host, port, use_ssl, user, password, verify_ssl)
@@ -211,7 +210,9 @@ class HuaweiApi:
         return self._features.is_available(feature)
 
     @staticmethod
-    def _router_data_check_authorized(response: ClientResponse, result: dict[str, Any]) -> bool:
+    def _router_data_check_authorized(
+        response: ClientResponse, result: dict[str, Any]
+    ) -> bool:
         if response.status == 404:
             return False
         if result is None or result.get("EmuiVersion", "-") == "-":
@@ -219,7 +220,9 @@ class HuaweiApi:
         return True
 
     @staticmethod
-    def _wan_info_check_authorized(response: ClientResponse, result: dict[str, Any]) -> bool:
+    def _wan_info_check_authorized(
+        response: ClientResponse, result: dict[str, Any]
+    ) -> bool:
         if response.status == 404:
             return False
         if result is None or result.get("ExternalIPAddress", "-") == "-":
@@ -229,30 +232,28 @@ class HuaweiApi:
     async def get_router_info(self) -> HuaweiRouterInfo:
         """Return the router information."""
         data = await self._core_api.get(
-            _URL_DEVICE_INFO,
-            check_authorized=HuaweiApi._router_data_check_authorized
+            _URL_DEVICE_INFO, check_authorized=HuaweiApi._router_data_check_authorized
         )
 
         return HuaweiRouterInfo(
             name=data.get("FriendlyName"),
-            model=data.get("custinfo", {}).get('CustDeviceName'),
+            model=data.get("custinfo", {}).get("CustDeviceName"),
             serial_number=data.get("SerialNumber"),
             software_version=data.get("SoftwareVersion"),
             hardware_version=data.get("HardwareVersion"),
-            harmony_os_version=data.get('HarmonyOSVersion'),
-            uptime=data.get('UpTime')
+            harmony_os_version=data.get("HarmonyOSVersion"),
+            uptime=data.get("UpTime"),
         )
 
     async def get_wan_connection_info(self) -> HuaweiConnectionInfo:
         data = await self._core_api.get(
-            _URL_WANDETECT,
-            check_authorized=HuaweiApi._wan_info_check_authorized
+            _URL_WANDETECT, check_authorized=HuaweiApi._wan_info_check_authorized
         )
 
         return HuaweiConnectionInfo(
             uptime=data.get("Uptime", 0),
             connected=data.get("Status") == _STATUS_CONNECTED,
-            address=data.get("ExternalIPAddress")
+            address=data.get("ExternalIPAddress"),
         )
 
     async def get_switch_state(self, name: str) -> bool:
@@ -261,19 +262,23 @@ class HuaweiApi:
 
         if name == SWITCH_NFC and self._features.is_available(FEATURE_NFC):
             data = await self._core_api.get(_URL_SWITCH_NFC)
-            return data.get('nfcSwitch') == 1
+            return data.get("nfcSwitch") == 1
 
-        elif name == SWITCH_WIFI_80211R and self._features.is_available(FEATURE_WIFI_80211R):
+        elif name == SWITCH_WIFI_80211R and self._features.is_available(
+            FEATURE_WIFI_80211R
+        ):
             data = await self._core_api.get(_URL_SWITCH_WIFI_80211R)
-            setting_value = data.get('WifiConfig', [{}])[0].get('Dot11REnable')
+            setting_value = data.get("WifiConfig", [{}])[0].get("Dot11REnable")
             return isinstance(setting_value, bool) and setting_value
 
         elif name == SWITCH_WIFI_TWT and self._features.is_available(FEATURE_WIFI_TWT):
             data = await self._core_api.get(_URL_SWITCH_WIFI_TWT)
-            setting_value = data.get('WifiConfig', [{}])[0].get('TWTEnable')
+            setting_value = data.get("WifiConfig", [{}])[0].get("TWTEnable")
             return isinstance(setting_value, bool) and setting_value
 
-        elif name == SWITCH_WLAN_FILTER and self._features.is_available(FEATURE_WLAN_FILTER):
+        elif name == SWITCH_WLAN_FILTER and self._features.is_available(
+            FEATURE_WLAN_FILTER
+        ):
             _, data = await self.get_wlan_filter_info()
             return data.enabled
 
@@ -287,21 +292,25 @@ class HuaweiApi:
         if name == SWITCH_NFC and self._features.is_available(FEATURE_NFC):
             await self._core_api.post(_URL_SWITCH_NFC, {"nfcSwitch": 1 if state else 0})
 
-        elif name == SWITCH_WIFI_80211R and self._features.is_available(FEATURE_WIFI_80211R):
+        elif name == SWITCH_WIFI_80211R and self._features.is_available(
+            FEATURE_WIFI_80211R
+        ):
             await self._core_api.post(
                 _URL_SWITCH_WIFI_80211R,
                 {"Dot11REnable": state},
-                extra_data={"action": "11rSetting"}
+                extra_data={"action": "11rSetting"},
             )
 
         elif name == SWITCH_WIFI_TWT and self._features.is_available(FEATURE_WIFI_TWT):
             await self._core_api.post(
                 _URL_SWITCH_WIFI_TWT,
                 {"TWTEnable": state},
-                extra_data={"action": "TWTSetting"}
+                extra_data={"action": "TWTSetting"},
             )
 
-        elif name == SWITCH_WLAN_FILTER and self._features.is_available(FEATURE_WLAN_FILTER):
+        elif name == SWITCH_WLAN_FILTER and self._features.is_available(
+            FEATURE_WLAN_FILTER
+        ):
             await self._set_wlan_filter_enabled(state)
 
         else:
@@ -309,7 +318,10 @@ class HuaweiApi:
 
     async def get_known_devices(self) -> Iterable[HuaweiClientDevice]:
         """Return the known devices."""
-        return [HuaweiClientDevice(item) for item in await self._core_api.get(_URL_HOST_INFO)]
+        return [
+            HuaweiClientDevice(item)
+            for item in await self._core_api.get(_URL_HOST_INFO)
+        ]
 
     @staticmethod
     def _get_device(node: dict[str, Any]) -> HuaweiDeviceNode:
@@ -322,7 +334,10 @@ class HuaweiApi:
 
     async def get_devices_topology(self) -> Iterable[HuaweiDeviceNode]:
         """Return the topology of the devices."""
-        return [self._get_device(item) for item in await self._core_api.get(_URL_DEVICE_TOPOLOGY)]
+        return [
+            self._get_device(item)
+            for item in await self._core_api.get(_URL_DEVICE_TOPOLOGY)
+        ]
 
     async def execute_action(self, action_name: str) -> None:
         """Execute specified action."""
@@ -332,11 +347,11 @@ class HuaweiApi:
             raise UnsupportedActionError(f"Unsupported action name: {action_name}")
 
     async def apply_wlan_filter(
-            self,
-            filter_mode: FilterMode,
-            filter_action: FilterAction,
-            device_mac: MAC_ADDR,
-            device_name: str | None = None
+        self,
+        filter_mode: FilterMode,
+        filter_action: FilterAction,
+        device_mac: MAC_ADDR,
+        device_name: str | None = None,
     ) -> bool:
         """Apply filter to the device."""
 
@@ -362,22 +377,14 @@ class HuaweiApi:
             return False
 
         need_action_2g, whitelist_2g, blacklist_2g = await self._process_access_lists(
-            state_2g,
-            filter_mode,
-            filter_action,
-            device_mac,
-            device_name
+            state_2g, filter_mode, filter_action, device_mac, device_name
         )
         if whitelist_2g is None or blacklist_2g is None or need_action_2g is None:
             _LOGGER.debug("Processing 2.4GHz filter failed")
             return False
 
         need_action_5g, whitelist_5g, blacklist_5g = await self._process_access_lists(
-            state_5g,
-            filter_mode,
-            filter_action,
-            device_mac,
-            device_name
+            state_5g, filter_mode, filter_action, device_mac, device_name
         )
         if whitelist_5g is None or blacklist_5g is None or need_action_5g is None:
             _LOGGER.debug("Processing 5GHz filter failed")
@@ -408,10 +415,7 @@ class HuaweiApi:
         await self._core_api.post(_URL_WLAN_FILTER, command)
         return True
 
-    async def _set_wlan_filter_enabled(
-            self,
-            value: bool
-    ) -> bool:
+    async def _set_wlan_filter_enabled(self, value: bool) -> bool:
         """Enable or disable wlan filtering."""
 
         state_2g, state_5g = await self._get_filter_states()
@@ -457,10 +461,7 @@ class HuaweiApi:
         await self._core_api.post(_URL_WLAN_FILTER, command)
         return True
 
-    async def set_wlan_filter_mode(
-            self,
-            value: FilterMode
-    ) -> bool:
+    async def set_wlan_filter_mode(self, value: FilterMode) -> bool:
         """Enable or disable wlan filtering."""
 
         state_2g, state_5g = await self._get_filter_states()
@@ -519,12 +520,12 @@ class HuaweiApi:
         return state_2g, state_5g
 
     async def _process_access_lists(
-            self,
-            state: dict[str, Any],
-            filter_mode: FilterMode,
-            filter_action: FilterAction,
-            device_mac: MAC_ADDR,
-            device_name: str | None
+        self,
+        state: dict[str, Any],
+        filter_mode: FilterMode,
+        filter_action: FilterAction,
+        device_mac: MAC_ADDR,
+        device_name: str | None,
     ) -> (bool | None, dict[str, Any] | None, dict[str, Any] | None):
         """Return (need_action, whitelist, blacklist)"""
         whitelist = state.get("WMACAddresses")
@@ -547,7 +548,10 @@ class HuaweiApi:
                 if device.mac_address == device_mac:
                     return {"MACAddress": device_mac, "HostName": device.actual_name}
             _LOGGER.debug("Can not find known device '%s'", device_mac)
-            return {"MACAddress": device_mac, "HostName": f"Unknown device {device_mac}"}
+            return {
+                "MACAddress": device_mac,
+                "HostName": f"Unknown device {device_mac}",
+            }
 
         # | FilterAction | FilterMode |    WL    |   BL   |
         # |--------------|------------|----------|--------|
@@ -562,26 +566,38 @@ class HuaweiApi:
         for index in range(len(whitelist)):
             if device_mac == whitelist[index].get("MACAddress"):
                 whitelist_index = index
-                _LOGGER.debug("Device '%s' found at %s whitelist", device_mac, state.get("FrequencyBand"))
+                _LOGGER.debug(
+                    "Device '%s' found at %s whitelist",
+                    device_mac,
+                    state.get("FrequencyBand"),
+                )
                 break
 
         for index in range(len(blacklist)):
             if device_mac == blacklist[index].get("MACAddress"):
                 blacklist_index = index
-                _LOGGER.debug("Device '%s' found at %s blacklist", device_mac, state.get("FrequencyBand"))
+                _LOGGER.debug(
+                    "Device '%s' found at %s blacklist",
+                    device_mac,
+                    state.get("FrequencyBand"),
+                )
                 break
 
         if filter_action == FilterAction.REMOVE:
 
             if filter_mode == FilterMode.BLACKLIST:
                 if blacklist_index is None:
-                    _LOGGER.debug("Can not find device '%s' to remove from blacklist", device_mac)
+                    _LOGGER.debug(
+                        "Can not find device '%s' to remove from blacklist", device_mac
+                    )
                     return False, whitelist, blacklist
                 del blacklist[blacklist_index]
                 return True, whitelist, blacklist
             elif filter_mode == FilterMode.WHITELIST:
                 if whitelist_index is None:
-                    _LOGGER.debug("Can not find device '%s' to remove from whitelist", device_mac)
+                    _LOGGER.debug(
+                        "Can not find device '%s' to remove from whitelist", device_mac
+                    )
                     return False, whitelist, blacklist
                 del whitelist[whitelist_index]
                 return True, whitelist, blacklist
@@ -595,7 +611,11 @@ class HuaweiApi:
                 if whitelist_index is not None:
                     item_to_add = whitelist.pop(whitelist_index)
                 if blacklist_index is not None:
-                    _LOGGER.debug("Device '%s' already in the %s blacklist", device_mac, state.get("FrequencyBand"))
+                    _LOGGER.debug(
+                        "Device '%s' already in the %s blacklist",
+                        device_mac,
+                        state.get("FrequencyBand"),
+                    )
                     return False, whitelist, blacklist
                 else:
                     blacklist.append(item_to_add or await get_access_list_item())
@@ -605,7 +625,11 @@ class HuaweiApi:
                 if blacklist_index is not None:
                     item_to_add = blacklist.pop(blacklist_index)
                 if whitelist_index is not None:
-                    _LOGGER.debug("Device '%s' already in the %s whitelist", device_mac, state.get("FrequencyBand"))
+                    _LOGGER.debug(
+                        "Device '%s' already in the %s whitelist",
+                        device_mac,
+                        state.get("FrequencyBand"),
+                    )
                     return False, whitelist, blacklist
                 else:
                     whitelist.append(item_to_add or await get_access_list_item())

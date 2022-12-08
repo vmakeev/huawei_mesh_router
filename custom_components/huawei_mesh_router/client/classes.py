@@ -18,16 +18,16 @@ MAC_ADDR: TypeAlias = str
 #   FilterAction
 # ---------------------------
 class FilterAction(Enum):
-    ADD = 0,
-    REMOVE = 1,
+    ADD = (0,)
+    REMOVE = (1,)
 
 
 # ---------------------------
 #   FilterMode
 # ---------------------------
 class FilterMode(IntEnum):
-    BLACKLIST = 0,
-    WHITELIST = 1,
+    BLACKLIST = (0,)
+    WHITELIST = (1,)
 
 
 # ---------------------------
@@ -43,13 +43,12 @@ class HuaweiFilterItem:
 #   HuaweiFilterItem
 # ---------------------------
 class HuaweiFilterInfo:
-
     def __init__(
-            self,
-            enabled: bool,
-            whitelist: list[HuaweiFilterItem],
-            blacklist: list[HuaweiFilterItem],
-            mode: FilterMode
+        self,
+        enabled: bool,
+        whitelist: list[HuaweiFilterItem],
+        blacklist: list[HuaweiFilterItem],
+        mode: FilterMode,
     ) -> None:
         self._enabled = enabled
         self._whitelist = whitelist
@@ -71,8 +70,7 @@ class HuaweiFilterInfo:
 
         def get_item(raw_item: dict[str, any]) -> HuaweiFilterItem:
             return HuaweiFilterItem(
-                name=raw_item.get("HostName"),
-                mac_address=raw_item.get("MACAddress")
+                name=raw_item.get("HostName"), mac_address=raw_item.get("MACAddress")
             )
 
         raw_whitelist = raw_data.get("WMACAddresses")
@@ -128,11 +126,7 @@ class HuaweiConnectionInfo:
 #   HuaweiClientDevice
 # ---------------------------
 class HuaweiClientDevice:
-
-    def __init__(
-            self,
-            device_data: Dict
-    ) -> None:
+    def __init__(self, device_data: Dict) -> None:
         """Initialize."""
         self._data: Dict = device_data
 
@@ -172,7 +166,9 @@ class HuaweiClientDevice:
     @property
     def is_router(self) -> bool:
         """Return true when device is hilink router."""
-        return self.is_hilink and self._data.get("VendorClassID") == VENDOR_CLASS_ID_ROUTER
+        return (
+            self.is_hilink and self._data.get("VendorClassID") == VENDOR_CLASS_ID_ROUTER
+        )
 
     @property
     def actual_name(self) -> str | None:
@@ -199,7 +195,6 @@ class HuaweiClientDevice:
 #   HuaweiClientDevice
 # ---------------------------
 class HuaweiDeviceNode:
-
     def __init__(self, mac: MAC_ADDR, hilink_type: str | None):
         """Initialize."""
         self._mac = mac

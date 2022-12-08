@@ -27,14 +27,18 @@ async def async_setup(hass, _config):
 # ---------------------------
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Huawei Router as config entry."""
-    store: Store = Store(hass, STORAGE_VERSION, f"huawei_mesh_{config_entry.entry_id}_tags")
+    store: Store = Store(
+        hass, STORAGE_VERSION, f"huawei_mesh_{config_entry.entry_id}_tags"
+    )
     coordinator = HuaweiControllerDataUpdateCoordinator(hass, config_entry, store)
     await coordinator.async_config_entry_first_refresh()
 
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
     config_entry.async_on_unload(coordinator.unload)
 
-    hass.data.setdefault(DOMAIN, {}).setdefault(config_entry.entry_id, {})[DATA_KEY_COORDINATOR] = coordinator
+    hass.data.setdefault(DOMAIN, {}).setdefault(config_entry.entry_id, {})[
+        DATA_KEY_COORDINATOR
+    ] = coordinator
     hass.data[DOMAIN][config_entry.entry_id][DATA_KEY_COORDINATOR] = coordinator
 
     hass.config_entries.async_setup_platforms(config_entry, PLATFORMS)
@@ -64,10 +68,16 @@ async def async_update_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 # ---------------------------
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        config_entry, PLATFORMS
+    )
     if unload_ok:
-        coordinator = hass.data[DOMAIN].get(config_entry.entry_id, {}).pop(DATA_KEY_COORDINATOR)
-        if coordinator and isinstance(coordinator, HuaweiControllerDataUpdateCoordinator):
+        coordinator = (
+            hass.data[DOMAIN].get(config_entry.entry_id, {}).pop(DATA_KEY_COORDINATOR)
+        )
+        if coordinator and isinstance(
+            coordinator, HuaweiControllerDataUpdateCoordinator
+        ):
             coordinator.unload()
     await async_unload_services(hass, config_entry)
     return unload_ok

@@ -125,8 +125,12 @@ class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
                     vol.Optional(CONF_PORT, default=user_input[CONF_PORT]): int,
                     vol.Optional(CONF_SSL, default=user_input[CONF_SSL]): bool,
-                    vol.Optional(CONF_VERIFY_SSL, default=user_input[CONF_VERIFY_SSL]): bool,
-                    vol.Optional(CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]): int,
+                    vol.Optional(
+                        CONF_VERIFY_SSL, default=user_input[CONF_VERIFY_SSL]
+                    ): bool,
+                    vol.Optional(
+                        CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]
+                    ): int,
                 }
             ),
             errors=errors,

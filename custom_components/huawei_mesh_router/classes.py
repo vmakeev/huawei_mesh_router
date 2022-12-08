@@ -30,15 +30,16 @@ class HuaweiWlanFilterMode(StrEnum):
 #   ConnectedDevice
 # ---------------------------
 class ConnectedDevice:
-
-    def __init__(self,
-                 name: str,
-                 host_name: str,
-                 mac: MAC_ADDR,
-                 is_active: bool,
-                 tags: list[str],
-                 filter_mode: HuaweiWlanFilterMode | None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        name: str,
+        host_name: str,
+        mac: MAC_ADDR,
+        is_active: bool,
+        tags: list[str],
+        filter_mode: HuaweiWlanFilterMode | None,
+        **kwargs,
+    ) -> None:
         self._name: str = name
         self._host_name: str = host_name
         self._mac: MAC_ADDR = mac
@@ -47,13 +48,15 @@ class ConnectedDevice:
         self._filter_mode: HuaweiWlanFilterMode | None = filter_mode
         self._data: Dict = kwargs or {}
 
-    def update_device_data(self,
-                           name: str,
-                           host_name: str,
-                           is_active: bool,
-                           tags: list[str],
-                           filter_mode: HuaweiWlanFilterMode | None,
-                           **kwargs):
+    def update_device_data(
+        self,
+        name: str,
+        host_name: str,
+        is_active: bool,
+        tags: list[str],
+        filter_mode: HuaweiWlanFilterMode | None,
+        **kwargs,
+    ):
         self._name: str = name
         self._host_name: str = host_name
         self._is_active: bool = is_active

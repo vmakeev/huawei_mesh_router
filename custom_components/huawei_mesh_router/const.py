@@ -21,4 +21,11 @@ DEFAULT_VERIFY_SSL: Final = False
 DEFAULT_SCAN_INTERVAL: Final = 30
 
 ATTR_MANUFACTURER: Final = "Huawei"
-PLATFORMS: Final = [Platform.SWITCH, Platform.DEVICE_TRACKER, Platform.SENSOR, Platform.BUTTON, Platform.BINARY_SENSOR, Platform.SELECT]
+PLATFORMS: Final = [
+    Platform.SWITCH,
+    Platform.DEVICE_TRACKER,
+    Platform.SENSOR,
+    Platform.BUTTON,
+    Platform.BINARY_SENSOR,
+    Platform.SELECT,
+]

@@ -4,7 +4,7 @@ The component provides access to some services that can be used in your automati
 
 ## Access lists
 
-See also: [access control mode](controls.md#wifi-access-control-mode)
+See also: [access control mode](controls.md#wi-fi-access-control-mode)
 
 ### Add device to the blacklist
 
