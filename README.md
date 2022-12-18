@@ -2,7 +2,7 @@
 
 Home Assistant custom component for control Huawei mesh routers over LAN.
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
@@ -47,7 +47,12 @@ Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakee
 
 ### HACS
 
-[Add a custom repository](https://hacs.xyz/docs/faq/custom_repositories/) `https://github.com/vmakeev/huawei_mesh_router` with `Integration` category to [HACS](https://hacs.xyz/) and restart Home Assistant.
+`HACS` **->** press `EXPLORE & DOWNLOAD REPOSITORIES` button **->** type `huawei mesh router` **->** press `DOWNLOAD` button and follow the instructions.
+
+Or simply click the button below:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=vmakeev&repository=huawei_mesh_router&category=integration)
+
 
 ## Configuration
 
