@@ -4,7 +4,7 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.config_entries import CONN_CLASS_LOCAL_POLL, ConfigFlow
+from homeassistant.config_entries import ConfigFlow, FlowResult, OptionsFlow
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -20,15 +20,23 @@ from homeassistant.core import callback
 from .client.coreapi import AuthenticationError
 from .client.huaweiapi import HuaweiApi
 from .const import (
+    DEFAULT_DEVICE_TRACKER,
+    DEFAULT_DEVICES_TAGS,
     DEFAULT_HOST,
     DEFAULT_NAME,
     DEFAULT_PASS,
     DEFAULT_PORT,
+    DEFAULT_ROUTER_CLIENTS_SENSORS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SSL,
     DEFAULT_USER,
     DEFAULT_VERIFY_SSL,
+    DEFAULT_WIFI_ACCESS_SWITCHES,
     DOMAIN,
+    OPT_DEVICE_TRACKER,
+    OPT_DEVICES_TAGS,
+    OPT_ROUTER_CLIENTS_SENSORS,
+    OPT_WIFI_ACCESS_SWITCHES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,17 +59,22 @@ def configured_instances(hass):
 class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     """HuaweiControllerConfigFlow class"""
 
-    VERSION = 1
-    CONNECTION_CLASS = CONN_CLASS_LOCAL_POLL
+    VERSION = 2
 
     def __init__(self):
         """Initialize HuaweiControllerConfigFlow."""
 
-    async def async_step_import(self, user_input=None):
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry) -> OptionsFlow:
+        """Get the options flow for this handler."""
+        return HuaweiControllerOptionsFlowHandler(config_entry)
+
+    async def async_step_import(self, user_input=None) -> FlowResult:
         """Occurs when a previously entry setup fails and is re-initiated."""
         return await self.async_step_user(user_input)
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input=None) -> FlowResult:
         """Handle a flow initialized by the user."""
         errors = {}
         if user_input is not None:
@@ -113,7 +126,7 @@ class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     # ---------------------------
     #   _show_config_form
     # ---------------------------
-    def _show_config_form(self, user_input, errors=None):
+    def _show_config_form(self, user_input, errors=None) -> FlowResult:
         """Show the configuration form to edit data."""
         return self.async_show_form(
             step_id="user",
@@ -123,15 +136,89 @@ class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
                     vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
                     vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
-                    vol.Optional(CONF_PORT, default=user_input[CONF_PORT]): int,
-                    vol.Optional(CONF_SSL, default=user_input[CONF_SSL]): bool,
-                    vol.Optional(
+                    vol.Required(CONF_PORT, default=user_input[CONF_PORT]): int,
+                    vol.Required(CONF_SSL, default=user_input[CONF_SSL]): bool,
+                    vol.Required(
                         CONF_VERIFY_SSL, default=user_input[CONF_VERIFY_SSL]
                     ): bool,
-                    vol.Optional(
-                        CONF_SCAN_INTERVAL, default=user_input[CONF_SCAN_INTERVAL]
-                    ): int,
                 }
             ),
             errors=errors,
+        )
+
+
+# ---------------------------
+#   HuaweiControllerOptionsFlowHandler
+# ---------------------------
+class HuaweiControllerOptionsFlowHandler(OptionsFlow):
+    """Handle options."""
+
+    def __init__(self, config_entry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self.options = dict(config_entry.options)
+
+    async def async_step_init(self, user_input=None) -> FlowResult:
+        """Manage the options."""
+        return await self.async_step_basic_options(user_input)
+
+    async def async_step_basic_options(self, user_input=None) -> FlowResult:
+        """Manage the basic options."""
+        if user_input is not None:
+            self.options.update(user_input)
+            return await self.async_step_features_select()
+
+        return self.async_show_form(
+            step_id="basic_options",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SCAN_INTERVAL,
+                        default=self.config_entry.options.get(
+                            CONF_SCAN_INTERVAL,
+                            self.config_entry.data.get(
+                                CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                            ),
+                        ),
+                    ): int,
+                }
+            ),
+        )
+
+    async def async_step_features_select(self, user_input=None) -> FlowResult:
+        """Manage the features select options."""
+        if user_input is not None:
+            self.options.update(user_input)
+            return self.async_create_entry(title="", data=self.options)
+
+        return self.async_show_form(
+            step_id="features_select",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        OPT_WIFI_ACCESS_SWITCHES,
+                        default=self.options.get(
+                            OPT_WIFI_ACCESS_SWITCHES, DEFAULT_WIFI_ACCESS_SWITCHES
+                        ),
+                    ): bool,
+                    vol.Required(
+                        OPT_ROUTER_CLIENTS_SENSORS,
+                        default=self.options.get(
+                            OPT_ROUTER_CLIENTS_SENSORS, DEFAULT_ROUTER_CLIENTS_SENSORS
+                        ),
+                    ): bool,
+                    vol.Required(
+                        OPT_DEVICES_TAGS,
+                        default=self.options.get(
+                            OPT_DEVICES_TAGS, DEFAULT_DEVICES_TAGS
+                        ),
+                    ): bool,
+                    vol.Required(
+                        OPT_DEVICE_TRACKER,
+                        default=self.options.get(
+                            OPT_DEVICE_TRACKER, DEFAULT_DEVICE_TRACKER
+                        ),
+                    ): bool,
+                },
+            ),
         )

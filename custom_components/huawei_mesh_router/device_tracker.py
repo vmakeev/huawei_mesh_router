@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
@@ -14,10 +13,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
-from .const import DATA_KEY_COORDINATOR, DOMAIN
+from .helpers import get_coordinator
+from .options import HuaweiIntegrationOptions
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
 
-FILTER_ATTRS = ("ip_address", "connected_via_id", "vendor_class_id")
+FILTER_ATTRS = ["ip_address", "connected_via_id", "vendor_class_id"]
 
 
 # ---------------------------
@@ -29,18 +29,16 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up device tracker for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ][DATA_KEY_COORDINATOR]
+    coordinator = get_coordinator(hass, config_entry)
+    integration_options = HuaweiIntegrationOptions(config_entry)
     tracked: dict[MAC_ADDR, HuaweiTracker] = {}
 
     @callback
     def coordinator_updated():
         """Update the status of the device."""
-        update_items(coordinator, async_add_entities, tracked)
+        update_items(coordinator, integration_options, async_add_entities, tracked)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
-
     coordinator_updated()
 
 
@@ -50,6 +48,7 @@ async def async_setup_entry(
 @callback
 def update_items(
     coordinator: HuaweiControllerDataUpdateCoordinator,
+    integration_options: HuaweiIntegrationOptions,
     async_add_entities: AddEntitiesCallback,
     tracked: dict[MAC_ADDR, HuaweiTracker],
 ) -> None:
@@ -57,7 +56,7 @@ def update_items(
     new_tracked: list[HuaweiTracker] = []
     for mac, device in coordinator.connected_devices.items():
         if mac not in tracked:
-            tracked[mac] = HuaweiTracker(device, coordinator)
+            tracked[mac] = HuaweiTracker(device, integration_options, coordinator)
             new_tracked.append(tracked[mac])
 
     if new_tracked:
@@ -73,10 +72,18 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     def __init__(
         self,
         device: ConnectedDevice,
+        integration_options: HuaweiIntegrationOptions,
         coordinator: HuaweiControllerDataUpdateCoordinator,
     ) -> None:
         """Initialize the tracked device."""
         self.device: ConnectedDevice = device
+
+        if integration_options.devices_tags:
+            self._filter_attrs = FILTER_ATTRS
+        else:
+            self._filter_attrs = list(FILTER_ATTRS)
+            self._filter_attrs.append("tags")
+
         super().__init__(coordinator)
 
     @property
@@ -117,7 +124,7 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the device state attributes."""
-        return {k: v for k, v in self.device.all_attrs if k not in FILTER_ATTRS}
+        return {k: v for k, v in self.device.all_attrs if k not in self._filter_attrs}
 
     @property
     def entity_registry_enabled_default(self) -> bool:

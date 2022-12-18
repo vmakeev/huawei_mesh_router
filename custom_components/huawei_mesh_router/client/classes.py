@@ -18,16 +18,16 @@ MAC_ADDR: TypeAlias = str
 #   FilterAction
 # ---------------------------
 class FilterAction(Enum):
-    ADD = (0,)
-    REMOVE = (1,)
+    ADD = 0
+    REMOVE = 1
 
 
 # ---------------------------
 #   FilterMode
 # ---------------------------
 class FilterMode(IntEnum):
-    BLACKLIST = (0,)
-    WHITELIST = (1,)
+    BLACKLIST = 0
+    WHITELIST = 1
 
 
 # ---------------------------
@@ -56,7 +56,7 @@ class HuaweiFilterInfo:
         self._mode = mode
 
     @classmethod
-    def parse(cls, raw_data: dict[str, any]) -> HuaweiFilterInfo:
+    def parse(cls, raw_data: dict[str, Any]) -> HuaweiFilterInfo:
         raw_enabled = raw_data.get("MACAddressControlEnabled")
         enabled = isinstance(raw_enabled, bool) and raw_enabled
 
@@ -68,7 +68,7 @@ class HuaweiFilterInfo:
         else:
             raise ValueError("MacFilterPolicy must be in range [0..1]")
 
-        def get_item(raw_item: dict[str, any]) -> HuaweiFilterItem:
+        def get_item(raw_item: dict[str, Any]) -> HuaweiFilterItem:
             return HuaweiFilterItem(
                 name=raw_item.get("HostName"), mac_address=raw_item.get("MACAddress")
             )

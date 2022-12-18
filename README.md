@@ -55,13 +55,32 @@ Configuration > [Integrations](https://my.home-assistant.io/redirect/integration
 
 By default, Huawei mesh routers use the username `admin`, although it is not displayed in the web interface and mobile applications.
 
+### Advanced options
+
+You can perform advanced component configuration by clicking the `CONFIGURE` button after adding it. 
+
 ![Integration](docs/images/integration.png)
+
+Advanced settings include:
+|                                                       Name                                                       |  Default   |
+|------------------------------------------------------------------------------------------------------------------|------------|
+| Update interval                                                                                                  | 30 seconds |
+| Enabling or disabling [Device Wi-Fi Access switches](docs/controls.md#device-wi-fi-access)                       |  Disabled  |
+| Enabling or disabling [Number of connected devices for each router](docs/sensors.md#number-of-connected-devices) |  Enabled   |
+| Enabling or disabling [Device tags](docs/device-tags.md#device-tags)                                             |  Disabled  |
+| Enabling or disabling [Devices tracking](docs/device-tracking.md#devices-tracking)                               |  Enabled   |
+
+
+![Options 1/2](docs/images/options_1.png)
+
+![Options 2/2](docs/images/options_2.png)
+
 
 ## Devices tracking
 
 The component allows you to track all devices connected to your mesh network. [Read more](docs/device-tracking.md)
 
-You can attach one or more tags to each client device in order to be able to use in automation the number of devices marked with a tag, connected to a specific router, or to the entire mesh network. [Read more](docs/device-tags.md)
+You can attach one or more tags to each client device in order to be able to use in automation the number of devices marked with a tag, connected to a specific router, or to the entire mesh network. [Read more](docs/device-tags.md#device-tags)
 
 ## Sensors
 

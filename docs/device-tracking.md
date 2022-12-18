@@ -2,6 +2,8 @@
 
 The component allows you to track all devices connected to your mesh network.
 
+This feature can be disabled in [advanced options](../README.md#advanced-options).
+
 Each tracked device exposes the following attributes:
 
 |    Attribute     |                                          Description                                            | Only when connected |
@@ -20,7 +22,7 @@ Each tracked device exposes the following attributes:
 | `filter_list`    | Blacklist, Whitelist or None (see [access control mode](controls.md#wi-fi-access-control-mode)) | No                  |
 | `friendly_name`  | Device name provided by the router                                                              | No                  |
 
-![alt text](images/device_tracker.png "Title")
+![Device tracker](images/device_tracker.png)
 
 Tracked device names, including routers, can be changed in [your mesh control interface](http://192.168.3.1/html/index.html#/devicecontrol), after which the component will update them in Home Assistant
 

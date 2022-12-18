@@ -11,8 +11,7 @@
                     "username": "Username",
                     "password": "Password",
                     "ssl": "Use SSL",
-                    "verify_ssl": "Verify SSL cert",
-                    "scan_interval": "Update interval"
+                    "verify_ssl": "Verify SSL cert"
                 }
             }
         },
@@ -21,6 +20,27 @@
             "auth_general": "Can not authenticate.",
             "auth_invalid_csrf": "CSRF error, try again.",
             "auth_invalid_credentials": "Invalid username or password."
+        }
+    },
+    "options": {
+        "step": {
+            "basic_options": {
+                "data": {
+                    "scan_interval": "Update interval"
+                },
+                "title": "Huawei mesh router setup (1\/2)",
+                "description": "Basic options"
+            },
+            "features_select": {
+                "data": {
+                    "wifi_access_switches": "Device Wi-Fi Access switches",
+                    "router_clients_sensors": "Number of connected devices for each router",
+                    "devices_tags": "Device tags",
+                    "device_tracker": "Devices tracking"
+                },
+                "title": "Huawei mesh router setup (2\/2)",
+                "description": "Additional features"
+            }
         }
     }
 }

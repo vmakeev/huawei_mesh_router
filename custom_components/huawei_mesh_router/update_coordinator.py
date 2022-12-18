@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from functools import wraps
 import logging
 from typing import Any, Callable, Final, Iterable, Tuple
 
@@ -11,7 +12,6 @@ from homeassistant.const import (
     CONF_NAME,
     CONF_PASSWORD,
     CONF_PORT,
-    CONF_SCAN_INTERVAL,
     CONF_SSL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
@@ -53,6 +53,7 @@ from .client.huaweiapi import (
     HuaweiApi,
 )
 from .const import ATTR_MANUFACTURER, DOMAIN
+from .options import HuaweiIntegrationOptions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -220,14 +221,65 @@ class TagsMap:
 
 
 # ---------------------------
+#   suppress_exceptions_when_unloaded
+# ---------------------------
+def suppress_exceptions_when_unloaded(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        coordinator = args[0]
+        try:
+            return await func(*args, **kwargs)
+        except Exception as ex:
+            if not coordinator.is_unloaded:
+                raise
+            else:
+                _LOGGER.debug(
+                    "Exception suppressed, coordinator is unloaded: %s", repr(ex)
+                )
+
+    return wrapper
+
+
+# ---------------------------
+#   suppress_update_exception
+# ---------------------------
+def suppress_update_exception(error_template: str):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            coordinator = args[0]
+            try:
+                return await func(*args, **kwargs)
+            except Exception as ex:
+                if coordinator.is_unloaded:
+                    _LOGGER.debug(error_template, repr(ex))
+                else:
+                    _LOGGER.warning(error_template, repr(ex))
+
+        return wrapper
+
+    return decorator
+
+
+# ---------------------------
 #   HuaweiControllerDataUpdateCoordinator
 # ---------------------------
 class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
-        self, hass: HomeAssistant, config_entry: ConfigEntry, tags_map_storage: Store
+        self,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        integration_options: HuaweiIntegrationOptions,
+        tags_map_storage: Store | None,
     ) -> None:
         """Initialize HuaweiController."""
-        self._tags_map: TagsMap = TagsMap(tags_map_storage)
+        self._is_unloaded = False
+        self._integration_options = integration_options
+        self._tags_map: TagsMap | None = (
+            TagsMap(tags_map_storage)
+            if self._integration_options.devices_tags and tags_map_storage
+            else None
+        )
         self._connected_devices: dict[MAC_ADDR, ConnectedDevice] = {}
         self._wan_info: HuaweiConnectionInfo | None = None
 
@@ -254,12 +306,18 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name=config_entry.data[CONF_NAME],
             update_method=self.async_update,
-            update_interval=timedelta(seconds=config_entry.data[CONF_SCAN_INTERVAL]),
+            update_interval=timedelta(
+                seconds=self._integration_options.update_interval
+            ),
         )
 
     @property
     def primary_router_name(self) -> str:
         return "Primary router"
+
+    @property
+    def is_unloaded(self) -> bool:
+        return self._is_unloaded
 
     @property
     def unique_id(self) -> str:
@@ -284,7 +342,10 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
     @property
     def tags_map(self) -> TagsMap:
         """Return the tags map."""
-        return self._tags_map
+        if self._integration_options.devices_tags:
+            return self._tags_map
+        else:
+            raise CoordinatorError("Devices tags are disabled by integration options.")
 
     @property
     def primary_router_api(self) -> HuaweiApi:
@@ -342,60 +403,62 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as ex:
             _LOGGER.warning("Can not schedule disconnect: %s", str(ex))
 
+    @suppress_exceptions_when_unloaded
     async def async_update(self) -> None:
         """Asynchronous update of all data."""
         _LOGGER.debug("Update started")
+        await self._update_wlan_filter_info()
+        await self._update_connected_devices()
         await self._update_apis()
         await self._update_router_infos()
         await self._update_wan_info()
-        await self._update_wlan_filter_info()
-        await self._update_connected_devices()
         await self._update_switches()
         await self._update_selects()
         _LOGGER.debug("Update completed")
 
+    @suppress_update_exception("Can not update wan info: %s")
     async def _update_wan_info(self) -> None:
         _LOGGER.debug("Updating wan info")
-        try:
-            self._wan_info = await self._select_api(
-                _PRIMARY_ROUTER_IDENTITY
-            ).get_wan_connection_info()
-        except Exception as ex:
-            _LOGGER.error("Can not update wan info: %s", str(ex))
+        self._wan_info = await self._select_api(
+            _PRIMARY_ROUTER_IDENTITY
+        ).get_wan_connection_info()
         _LOGGER.debug("Wan info updated")
 
+    @suppress_update_exception("Can not update wlan filter info: %s")
     async def _update_wlan_filter_info(self) -> None:
         _LOGGER.debug("Updating wlan filter info")
-        try:
-            primary_api = self.primary_router_api
-            if await primary_api.is_feature_available(FEATURE_WIFI_80211R):
-                _, info_5g = await primary_api.get_wlan_filter_info()
-                # ignore 2.4GHz information
-                self._wlan_filter_info = info_5g
-            else:
-                self._wlan_filter_info = None
-        except Exception as ex:
-            _LOGGER.error("Can not update wlan filter info: %s", str(ex))
+        primary_api = self.primary_router_api
+        if await primary_api.is_feature_available(FEATURE_WIFI_80211R):
+            _, info_5g = await primary_api.get_wlan_filter_info()
+            # ignore 2.4GHz information
+            self._wlan_filter_info = info_5g
+        else:
+            self._wlan_filter_info = None
         _LOGGER.debug("Wlan filter info updated")
 
+    @suppress_update_exception("Can not update router infos: %s")
     async def _update_router_infos(self) -> None:
         """Asynchronous update of routers information."""
         _LOGGER.debug("Updating routers info")
         for (device_mac, api) in self._apis.items():
-            try:
-                self._router_infos[device_mac] = await api.get_router_info()
-                _LOGGER.debug("Router info: updated for '%s'", device_mac)
-            except Exception as ex:
-                _LOGGER.error(
-                    "Can not update router info for '%s': %s", device_mac, str(ex)
-                )
+            await self._update_router_info(device_mac, api)
         _LOGGER.debug("Routers info updated")
+
+    @suppress_update_exception("Can not update router info: %s")
+    async def _update_router_info(self, device_mac: MAC_ADDR, api: HuaweiApi) -> None:
+        """Asynchronous update of router information."""
+        _LOGGER.debug("Updating router %s info", device_mac)
+        self._router_infos[device_mac] = await api.get_router_info()
+        _LOGGER.debug("Router info: updated for '%s'", device_mac)
 
     def unload(self) -> None:
         """Unload the coordinator and disconnect from API."""
+        self._is_unloaded = True
+        _LOGGER.debug("Coordinator is unloaded")
         for router_api in self._apis.values():
             self._safe_disconnect(router_api)
 
+    @suppress_update_exception("Can not update apis: %s")
     async def _update_apis(self) -> None:
         """Asynchronous update of available apis."""
 
@@ -424,8 +487,10 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             if router_api:
                 self._safe_disconnect(router_api)
 
+        _LOGGER.debug("Updating apis")
         self._routersWatcher.look_for_changes(self, on_router_added, on_router_removed)
 
+    @suppress_update_exception("Can not update wlan filter mode: %s")
     async def _update_selects(self) -> None:
         """Asynchronous update of selects states."""
         _LOGGER.debug("Updating selects states")
@@ -443,7 +508,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             elif mode == FilterMode.BLACKLIST:
                 state = HuaweiWlanFilterMode.BLACKLIST
             else:
-                _LOGGER.debug("Unsupported FilterMode %s", mode)
+                _LOGGER.warning("Unsupported FilterMode %s", mode)
                 state = None
             new_states[SELECT_WLAN_FILTER_MODE] = state
             _LOGGER.debug("WLan filter mode select state updated to %s", state)
@@ -451,6 +516,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Selects states updated")
         self._select_states = new_states
 
+    @suppress_update_exception("Can not update switches: %s")
     async def _update_switches(self) -> None:
         """Asynchronous update of switch states."""
         _LOGGER.debug("Updating switches states")
@@ -482,27 +548,29 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         for mac, api in self._apis.items():
             device = self._connected_devices.get(mac)
             if device and device.is_active:
-                try:
-                    if await api.is_feature_available(FEATURE_NFC):
-                        state = await api.get_switch_state(SWITCH_NFC)
-                        new_states[f"{SWITCH_NFC}_{device.mac}"] = state
-                        _LOGGER.debug(
-                            "Nfc switch (%s) state updated to %s", device.name, state
-                        )
-                except Exception as ex:
-                    _LOGGER.error(
-                        "Can not get NFC switch state for device %s: %s", mac, str(ex)
-                    )
+                await self.update_router_nfc_switch(api, device, new_states)
 
-        await self.calculate_device_access_switch_states(new_states)
+        if self._integration_options.wifi_access_switches:
+            await self.calculate_device_access_switch_states(new_states)
 
         self._switch_states = new_states
         _LOGGER.debug("Switches states updated")
+
+    @suppress_update_exception("Can not update NFC switch state: %s")
+    async def update_router_nfc_switch(self, api, device, new_states):
+        if await api.is_feature_available(FEATURE_NFC):
+            _LOGGER.debug("Updating nfc switch for %s", device.name)
+            state = await api.get_switch_state(SWITCH_NFC)
+            new_states[f"{SWITCH_NFC}_{device.mac}"] = state
+            _LOGGER.debug("Nfc switch (%s) state updated to %s", device.name, state)
 
     async def calculate_device_access_switch_states(
         self, states: dict[str, bool] | None = None
     ) -> None:
         """Update device access switch states."""
+        if not self._integration_options.wifi_access_switches:
+            return
+
         states = states or self._switch_states
         primary_api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
 
@@ -525,6 +593,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                     "Device access switch (%s) state updated to %s", device.name, state
                 )
 
+    @suppress_update_exception("Can not update connected devices: %s")
     async def _update_connected_devices(self) -> None:
         """Asynchronous update of connected devices."""
         _LOGGER.debug("Updating connected devices")
@@ -581,7 +650,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                     whitelisted.mac_address
                 ] = HuaweiWlanFilterMode.WHITELIST
 
-        if not self._tags_map.is_loaded:
+        if self._integration_options.devices_tags and not self._tags_map.is_loaded:
             await self._tags_map.load()
 
         for device_data in devices_data:
@@ -589,8 +658,13 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             host_name: str = device_data.host_name or f"device_{mac}"
             name: str = device_data.actual_name or host_name
             is_active: bool = device_data.is_active
-            tags = self._tags_map.get_tags(mac)
             filter_mode = devices_to_filters.get(mac)
+
+            tags = (
+                self._tags_map.get_tags(mac)
+                if self._integration_options.devices_tags
+                else []
+            )
 
             if mac in self._connected_devices:
                 device = self._connected_devices[mac]

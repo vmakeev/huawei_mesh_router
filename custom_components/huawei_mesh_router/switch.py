@@ -24,8 +24,13 @@ from .client.huaweiapi import (
     SWITCH_WIFI_TWT,
     SWITCH_WLAN_FILTER,
 )
-from .const import DATA_KEY_COORDINATOR, DOMAIN
-from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
+from .helpers import (
+    generate_entity_id,
+    generate_entity_name,
+    generate_entity_unique_id,
+    get_coordinator,
+)
+from .options import HuaweiIntegrationOptions
 from .update_coordinator import (
     SWITCH_DEVICE_ACCESS,
     ActiveRoutersWatcher,
@@ -100,9 +105,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up switches for Huawei Router component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ][DATA_KEY_COORDINATOR]
+    coordinator = get_coordinator(hass, config_entry)
 
     switches: list[HuaweiSwitch] = []
 
@@ -130,25 +133,40 @@ async def async_setup_entry(
 
     async_add_entities(switches)
 
+    watch_for_additional_routers(coordinator, config_entry, async_add_entities)
+
+
+# ---------------------------
+#   watch_for_additional_routers
+# ---------------------------
+def watch_for_additional_routers(
+    coordinator: HuaweiControllerDataUpdateCoordinator,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
     router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
     known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
+
+    integration_options = HuaweiIntegrationOptions(config_entry)
+    is_wifi_switches_enabled = integration_options.wifi_access_switches
 
     @callback
     def on_router_added(device_mac: MAC_ADDR, router: ConnectedDevice) -> None:
         """When a new mesh router is detected."""
-        hass.async_add_job(
+        coordinator.hass.async_add_job(
             _add_nfc_if_available(
                 coordinator, known_nfc_switches, device_mac, router, async_add_entities
             )
         )
 
-    device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher()
-    known_access_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
+    if is_wifi_switches_enabled:
+        device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher()
+        known_access_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
 
     @callback
     def on_wireless_device_added(device_mac: MAC_ADDR, device: ConnectedDevice) -> None:
         """When a new mesh router is detected."""
-        hass.async_add_job(
+        coordinator.hass.async_add_job(
             _add_access_switch_if_available(
                 coordinator,
                 known_access_switches,
@@ -162,9 +180,11 @@ async def async_setup_entry(
     def coordinator_updated() -> None:
         """Update the status of the device."""
         router_watcher.look_for_changes(coordinator, on_router_added)
-        device_watcher.look_for_changes(coordinator, on_wireless_device_added)
+        if is_wifi_switches_enabled:
+            device_watcher.look_for_changes(coordinator, on_wireless_device_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
+    coordinator_updated()
 
 
 # ---------------------------

@@ -74,7 +74,7 @@ def _find_coordinator(
             coordinator, HuaweiControllerDataUpdateCoordinator
         ):
             continue
-        for mac, connected_device in coordinator.connected_devices.items():
+        for mac, _ in coordinator.connected_devices.items():
             if mac == device_mac:
                 _LOGGER.debug(
                     "Found coordinator %s for '%s'", coordinator.name, device_mac
@@ -213,7 +213,6 @@ async def async_setup_services(hass: HomeAssistant, config_entry: ConfigEntry) -
         else:
             _LOGGER.warning("Unknown service: %s", service_name)
 
-    _LOGGER.debug("Registering services")
     for item in SERVICES:
         hass.services.async_register(
             domain=DOMAIN,
@@ -230,7 +229,6 @@ async def async_unload_services(hass: HomeAssistant, config_entry: ConfigEntry):
         _LOGGER.debug("%s active instances remaining, skipping", active_instances)
         return
 
-    _LOGGER.debug("Unloading services")
     hass.data[DOMAIN].pop(DATA_KEY_SERVICES)
     for service in SERVICES:
         hass.services.async_remove(domain=DOMAIN, service=service.name)
