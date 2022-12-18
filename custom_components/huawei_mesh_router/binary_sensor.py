@@ -1,4 +1,4 @@
-"""Support for additional sensors."""
+"""Support for binary sensors."""
 
 from dataclasses import dataclass, field
 import logging
@@ -16,11 +16,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .client.classes import MAC_ADDR
-from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import (
     generate_entity_id,
     generate_entity_name,
     generate_entity_unique_id,
+    get_coordinator,
     get_past_moment,
 )
 from .update_coordinator import HuaweiControllerDataUpdateCoordinator
@@ -38,7 +38,7 @@ ENTITY_DOMAIN: Final = "binary_sensor"
 # ---------------------------
 @dataclass
 class HuaweiBinarySensorEntityDescription(BinarySensorEntityDescription):
-    """A class that describes sensor entities."""
+    """A class that describes binary sensor entities."""
 
     function_name: str | None = None
     function_uid: str | None = None
@@ -55,7 +55,7 @@ class HuaweiBinarySensorEntityDescription(BinarySensorEntityDescription):
 # ---------------------------
 @dataclass
 class HuaweiWanSensorEntityDescription(HuaweiBinarySensorEntityDescription):
-    """A class that describes sensor entities."""
+    """A class that describes WAN binary sensor entity."""
 
     native_unit_of_measurement: str | None = None
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
@@ -72,10 +72,8 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up sensors for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ][DATA_KEY_COORDINATOR]
+    """Set up binary sensors for Huawei component."""
+    coordinator = get_coordinator(hass, config_entry)
 
     sensors = [
         HuaweiWanBinarySensor(

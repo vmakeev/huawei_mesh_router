@@ -13,8 +13,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
 from .client.huaweiapi import ACTION_REBOOT
-from .const import DATA_KEY_COORDINATOR, DOMAIN
-from .helpers import generate_entity_id, generate_entity_name, generate_entity_unique_id
+from .helpers import (
+    generate_entity_id,
+    generate_entity_name,
+    generate_entity_unique_id,
+    get_coordinator,
+)
 from .update_coordinator import (
     ActiveRoutersWatcher,
     HuaweiControllerDataUpdateCoordinator,
@@ -35,14 +39,21 @@ async def async_setup_entry(
     hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities
 ) -> None:
     """Set up buttons for Huawei Router component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ][DATA_KEY_COORDINATOR]
+    coordinator = get_coordinator(hass, config_entry)
 
     buttons = [HuaweiRebootButton(coordinator, None)]
 
     async_add_entities(buttons)
 
+    _watch_for_additional_routers(coordinator, config_entry, async_add_entities)
+
+
+# ---------------------------
+#   _watch_for_additional_routers
+# ---------------------------
+def _watch_for_additional_routers(
+    coordinator, config_entry, async_add_entities
+) -> None:
     watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
     known_buttons: dict[MAC_ADDR, HuaweiButton] = {}
 
@@ -60,6 +71,7 @@ async def async_setup_entry(
         watcher.look_for_changes(coordinator, on_router_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
+    coordinator_updated()
 
 
 # ---------------------------

@@ -20,13 +20,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .classes import DEVICE_TAG, ConnectedDevice, HuaweiInterfaceType
 from .client.classes import MAC_ADDR
 from .client.huaweiapi import CONNECTED_VIA_ID_PRIMARY
-from .const import DATA_KEY_COORDINATOR, DOMAIN
 from .helpers import (
     generate_entity_id,
     generate_entity_name,
     generate_entity_unique_id,
+    get_coordinator,
     get_past_moment,
 )
+from .options import HuaweiIntegrationOptions
 from .update_coordinator import (
     ActiveRoutersWatcher,
     HuaweiControllerDataUpdateCoordinator,
@@ -99,9 +100,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors for Huawei component."""
-    coordinator: HuaweiControllerDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ][DATA_KEY_COORDINATOR]
+    coordinator = get_coordinator(hass, config_entry)
+
+    integration_options = HuaweiIntegrationOptions(config_entry)
 
     sensors = [
         HuaweiUptimeSensor(
@@ -125,25 +126,45 @@ async def async_setup_entry(
                 function_uid=_FUNCTION_UID_TOTAL_CLIENTS,
                 function_name=_FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS,
             ),
+            integration_options,
             lambda device: device.is_active,
-        ),
-        HuaweiConnectedDevicesSensor(
-            coordinator,
-            HuaweiClientsSensorEntityDescription(
-                key="primary",
-                icon="mdi:router-wireless",
-                device_mac=None,
-                device_name=coordinator.primary_router_name,
-                function_uid=_FUNCTION_UID_CLIENTS,
-                function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS,
-            ),
-            lambda device: device.is_active
-            and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY,
         ),
     ]
 
+    if integration_options.router_clients_sensors:
+        sensors.append(
+            HuaweiConnectedDevicesSensor(
+                coordinator,
+                HuaweiClientsSensorEntityDescription(
+                    key="primary",
+                    icon="mdi:router-wireless",
+                    device_mac=None,
+                    device_name=coordinator.primary_router_name,
+                    function_uid=_FUNCTION_UID_CLIENTS,
+                    function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS,
+                ),
+                integration_options,
+                lambda device: device.is_active
+                and device.connected_via_id == CONNECTED_VIA_ID_PRIMARY,
+            )
+        )
+
     async_add_entities(sensors)
 
+    watch_for_additional_routers(
+        coordinator, config_entry, integration_options, async_add_entities
+    )
+
+
+# ---------------------------
+#   watch_for_additional_routers
+# ---------------------------
+def watch_for_additional_routers(
+    coordinator: HuaweiControllerDataUpdateCoordinator,
+    config_entry: ConfigEntry,
+    integration_options: HuaweiIntegrationOptions,
+    async_add_entities: AddEntitiesCallback,
+):
     watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
     known_client_sensors: dict[MAC_ADDR, HuaweiConnectedDevicesSensor] = {}
     known_uptime_sensors: dict[MAC_ADDR, HuaweiUptimeSensor] = {}
@@ -153,7 +174,9 @@ async def async_setup_entry(
         """When a new mesh router is detected."""
         new_entities = []
 
-        if not known_client_sensors.get(mac):
+        if integration_options.router_clients_sensors and not known_client_sensors.get(
+            mac
+        ):
             description = HuaweiClientsSensorEntityDescription(
                 key=mac,
                 icon="mdi:router-wireless",
@@ -165,6 +188,7 @@ async def async_setup_entry(
             entity = HuaweiConnectedDevicesSensor(
                 coordinator,
                 description,
+                integration_options,
                 lambda device, via_id=mac: device.is_active
                 and device.connected_via_id == via_id,
             )
@@ -193,6 +217,7 @@ async def async_setup_entry(
         watcher.look_for_changes(coordinator, on_router_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
+    coordinator_updated()
 
 
 # ---------------------------
@@ -275,11 +300,13 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
         self,
         coordinator: HuaweiControllerDataUpdateCoordinator,
         description: HuaweiClientsSensorEntityDescription,
+        integration_options: HuaweiIntegrationOptions,
         devices_predicate: Callable[[ConnectedDevice], bool],
     ) -> None:
         """Initialize."""
         super().__init__(coordinator, description)
 
+        self._integration_options = integration_options
         self._attr_native_value = 0
         self._attr_extra_state_attributes = {}
         self._devices_predicate: Callable[[ConnectedDevice], bool] = devices_predicate
@@ -287,6 +314,8 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+
+        tags_enabled = self._integration_options.devices_tags
 
         total_clients: int = 0
         guest_clients: int = 0
@@ -298,8 +327,10 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
 
         untagged_clients: int = 0
         tagged_devices: dict[DEVICE_TAG, int] = {}
-        for tag in self.coordinator.tags_map.get_all_tags():
-            tagged_devices[tag] = 0
+
+        if tags_enabled:
+            for tag in self.coordinator.tags_map.get_all_tags():
+                tagged_devices[tag] = 0
 
         for device in self.coordinator.connected_devices.values():
 
@@ -322,14 +353,15 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
                 wireless_clients += 1
                 wifi_5_clients += 1
 
-            if device.tags is None or len(device.tags) == 0:
-                untagged_clients += 1
-            else:
-                for tag in device.tags:
-                    if tag in tagged_devices:
-                        tagged_devices[tag] += 1
-                    else:
-                        tagged_devices[tag] = 1
+            if tags_enabled:
+                if device.tags is None or len(device.tags) == 0:
+                    untagged_clients += 1
+                else:
+                    for tag in device.tags:
+                        if tag in tagged_devices:
+                            tagged_devices[tag] += 1
+                        else:
+                            tagged_devices[tag] = 1
 
         self._attr_native_value = total_clients
 
@@ -340,8 +372,9 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
         self._attr_extra_state_attributes["wifi_2_4_clients"] = wifi_2_4_clients
         self._attr_extra_state_attributes["wifi_5_clients"] = wifi_5_clients
 
-        for tag, count in tagged_devices.items():
-            self._attr_extra_state_attributes[f"tagged_{tag}_clients"] = count
-        self._attr_extra_state_attributes[f"untagged_clients"] = untagged_clients
+        if tags_enabled:
+            for tag, count in tagged_devices.items():
+                self._attr_extra_state_attributes[f"tagged_{tag}_clients"] = count
+            self._attr_extra_state_attributes[f"untagged_clients"] = untagged_clients
 
         super()._handle_coordinator_update()

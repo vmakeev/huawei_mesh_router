@@ -2,6 +2,8 @@
 
 The component allows you to attach one or more tags to each client device in order to be able to use in automation the number of devices marked with a tag, connected to a specific router, or to the entire mesh network.
 
+Device tags will not be added if this feature is disabled in [advanced options](../README.md#advanced-options).
+
 The component will attempt to load the device tag-to-MAC mapping from the file located at `<home assistant config folder>/.storage/huawei_mesh_<long_config_id>_tags`. If the file does not exist, then the component will create it with a usage example:
 
 ```

@@ -81,9 +81,9 @@ See [Wi-Fi Access Control mode](#wi-fi-access-control-mode) for more information
 One switch is created for each wireless client device in the mesh network:
 * `switch.<integration_name>_device_wifi_access_<device_name>`
 
-The switch will unavailable if [Wi-Fi Access Control](#wi-fi-access-control) is not in the `on` state.
+The switch will be unavailable if [Wi-Fi Access Control](#wi-fi-access-control) is not in the `on` state.
 
-These switches will not be added to Home Assistant if the Primary router does not support [Wi-Fi Access Control](#wi-fi-access-control).
+These switches will not be added to Home Assistant if the Primary router does not support [Wi-Fi Access Control](#wi-fi-access-control), or this feature is disabled in [advanced options](../README.md#advanced-options).
 
 _Note: these switches are not attached to a specific router device. Don't use this feature if you don't know what you are doing._
 

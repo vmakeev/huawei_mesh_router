@@ -208,7 +208,7 @@ class HuaweiCoreApi:
             self._logger.debug("GET %s performed, status: %s", path, response.status)
             return response
         except Exception as ex:
-            self._logger.error("GET %s failed: %s", path, str(ex))
+            self._logger.debug("GET %s failed: %s", path, str(ex))
             raise ApiCallError(
                 f"Can not perform GET request at {path} cause of {repr(ex)}",
                 APICALL_ERRCODE_REQUEST,
@@ -230,7 +230,7 @@ class HuaweiCoreApi:
             )
             return response
         except Exception as ex:
-            self._logger.error("POST %s failed: %s", path, str(ex))
+            self._logger.debug("POST %s failed: %s", path, str(ex))
             raise ApiCallError(
                 f"Can not perform POST request at {path} cause of {repr(ex)}",
                 APICALL_ERRCODE_REQUEST,
@@ -257,7 +257,7 @@ class HuaweiCoreApi:
             response = await self._get_raw("html/index.html#/login")
 
             if response.status != 200:
-                self._logger.error(
+                self._logger.debug(
                     "Authentication failed: can not get index, status is %s",
                     response.status,
                 )
@@ -285,7 +285,7 @@ class HuaweiCoreApi:
                 },
             )
             if response.status != 200:
-                self._logger.error(
+                self._logger.debug(
                     "Authentication failed: can not send nonce, status is %s",
                     response.status,
                 )
@@ -335,7 +335,7 @@ class HuaweiCoreApi:
                 },
             )
             if response.status != 200:
-                self._logger.error(
+                self._logger.debug(
                     "Authentication failed: can not send proof, status is %s",
                     response.status,
                 )
@@ -354,12 +354,12 @@ class HuaweiCoreApi:
             if ex.category == APICALL_ERRCAT_CSRF:
                 raise AuthenticationError("CSRF error, try again", AUTH_FAILURE_CSRF)
 
-            self._logger.warning("Authentication failed: %s", {repr(ex)})
+            self._logger.debug("Authentication failed: %s", {repr(ex)})
             raise AuthenticationError(
                 "Authentication failed due to api call error", AUTH_FAILURE_GENERAL
             )
         except Exception as ex:
-            self._logger.warning("Authentication failed: %s", {repr(ex)})
+            self._logger.debug("Authentication failed: %s", {repr(ex)})
             raise AuthenticationError(
                 "Authentication failed due to unknown error", AUTH_FAILURE_GENERAL
             )
