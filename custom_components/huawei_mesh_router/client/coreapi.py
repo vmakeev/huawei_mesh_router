@@ -1,11 +1,9 @@
 """Huawei api core functions."""
 
 import asyncio
-import hashlib
-import hmac
+from functools import wraps
 import json
 import logging
-from random import randbytes
 import re
 from typing import Any, Callable, Dict, Final
 
@@ -13,6 +11,8 @@ import aiohttp
 from aiohttp import ClientResponse
 from aiohttp.abc import AbstractCookieJar
 from yarl import URL
+
+from .crypto import generate_nonce, get_client_proof
 
 TIMEOUT: Final = 5.0
 
@@ -24,11 +24,13 @@ APICALL_ERRCODE_REQUEST: Final = -3
 APICALL_ERRCAT_CREDENTIALS: Final = "user_pass_err"
 APICALL_ERRCAT_CSRF: Final = "csrf_error"
 APICALL_ERRCAT_REQUEST: Final = "request_error"
+APICALL_ERRCAT_TOO_MANY_USERS: Final = "Too_Many_user"
 APICALL_ERRCAT_UNAUTHORIZED: Final = "unauthorized"
 
 AUTH_FAILURE_GENERAL: Final = "auth_general"
 AUTH_FAILURE_CREDENTIALS: Final = "auth_invalid_credentials"
 AUTH_FAILURE_CSRF: Final = "auth_invalid_csrf"
+AUTH_FAILURE_TOO_MANY_USERS: Final = "auth_too_many_users"
 
 
 # ---------------------------
@@ -88,6 +90,70 @@ class ApiCallError(Exception):
 
 
 # ---------------------------
+#   handle_auth_exception
+# ---------------------------
+def handle_auth_exception(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        logger = args[0]._logger
+        try:
+            return await func(*args, **kwargs)
+        except ApiCallError as ex:
+            if ex.category == APICALL_ERRCAT_CREDENTIALS:
+                raise AuthenticationError(
+                    "Invalid username or password", AUTH_FAILURE_CREDENTIALS
+                )
+            if ex.category == APICALL_ERRCAT_CSRF:
+                raise AuthenticationError("CSRF error, try again", AUTH_FAILURE_CSRF)
+
+            if ex.category == APICALL_ERRCAT_TOO_MANY_USERS:
+                raise AuthenticationError(
+                    "Too many users, wait some time before retry",
+                    AUTH_FAILURE_TOO_MANY_USERS,
+                )
+
+            logger.debug("Authentication failed: %s", {repr(ex)})
+            raise AuthenticationError(
+                "Authentication failed due to api call error", AUTH_FAILURE_GENERAL
+            )
+        except AuthenticationError:
+            raise
+        except Exception as ex:
+            logger.debug("Authentication failed: %s", {repr(ex)})
+            raise AuthenticationError(
+                "Authentication failed due to unknown error", AUTH_FAILURE_GENERAL
+            )
+
+    return wrapper
+
+
+# ---------------------------
+#   lock_external_call
+# ---------------------------
+def lock_external_call(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        api: HuaweiCoreApi = args[0]
+        async with api._call_locker:
+            return await func(*args, **kwargs)
+
+    return wrapper
+
+
+# ---------------------------
+#   lock_auth_call
+# ---------------------------
+def lock_auth_call(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        api: HuaweiCoreApi = args[0]
+        async with api._auth_locker:
+            return await func(*args, **kwargs)
+
+    return wrapper
+
+
+# ---------------------------
 #   _get_response_text
 # ---------------------------
 async def _get_response_text(response: ClientResponse) -> str:
@@ -134,6 +200,7 @@ class HuaweiCoreApi:
         self._active_csrf: Dict | None = None
         self._is_initialized: bool = False
         self._call_locker = asyncio.Lock()
+        self._auth_locker = asyncio.Lock()
 
         schema = "https" if use_ssl else "http"
         self._base_url: str = f"{schema}://{host}:{port}"
@@ -248,159 +315,146 @@ class HuaweiCoreApi:
         self._session.cookie_jar.clear()
         self._active_csrf = None
 
+    @handle_auth_exception
+    @lock_auth_call
     async def authenticate(self) -> None:
         """Perform authentication and return true when authentication success"""
+        self._logger.debug("Authentication started")
+        self._refresh_session()
+        self._logger.debug("Getting index")
+        response = await self._get_raw("html/index.html#/login")
+
+        if response.status != 200:
+            self._logger.debug(
+                "Authentication failed: can not get index, status is %s",
+                response.status,
+            )
+            raise AuthenticationError("Failed to get index", AUTH_FAILURE_GENERAL)
+
+        result = await _get_response_text(response)
+
+        csrf_param = re.search(
+            '<meta name="csrf_param" content="(.+)"/>', result
+        ).group(1)
+        csrf_token = re.search(
+            '<meta name="csrf_token" content="(.+)"/>', result
+        ).group(1)
+        self._update_csrf(csrf_param, csrf_token)
+        self._check_has_cookies(self._session.cookie_jar, URL(self._base_url))
+
+        first_nonce = generate_nonce()
+
+        self._logger.debug("Sending nonce")
+        response = await self._post_raw(
+            "api/system/user_login_nonce",
+            {
+                "csrf": self._active_csrf,
+                "data": {"username": self._user, "firstnonce": first_nonce},
+            },
+        )
+        if response.status != 200:
+            self._logger.debug(
+                "Authentication failed: can not send nonce, status is %s",
+                response.status,
+            )
+            raise AuthenticationError("Failed to send nonce", AUTH_FAILURE_GENERAL)
+
+        result = await _get_response_json(response)
+        self._handle_csrf_dict(result)
+        self._handle_error_dict(result)
+
+        server_nonce = result["servernonce"]
+        iterations = int(result["iterations"])
+        salt = result["salt"]
+
+        client_proof = get_client_proof(
+            self._password, salt, iterations, first_nonce, server_nonce
+        )
+
+        self._logger.debug("Sending proof")
+        response = await self._post_raw(
+            "api/system/user_login_proof",
+            {
+                "csrf": self._active_csrf,
+                "data": {
+                    "clientproof": client_proof,
+                    "finalnonce": server_nonce,
+                },
+            },
+        )
+        if response.status != 200:
+            self._logger.debug(
+                "Authentication failed: can not send proof, status is %s",
+                response.status,
+            )
+            raise AuthenticationError("Failed to send proof", AUTH_FAILURE_GENERAL)
+
+        result = await _get_response_json(response)
+        self._handle_csrf_dict(result)
+        self._handle_error_dict(result)
+        self._logger.debug("Authentication success")
+
+    async def _try_logout(self):
+        """Try logout from the api"""
         try:
-            self._logger.debug("Authentication started")
-            self._refresh_session()
-            self._logger.debug("Getting index")
-            response = await self._get_raw("html/index.html#/login")
-
-            if response.status != 200:
-                self._logger.debug(
-                    "Authentication failed: can not get index, status is %s",
-                    response.status,
-                )
-                raise AuthenticationError("Failed to get index", AUTH_FAILURE_GENERAL)
-
-            result = await _get_response_text(response)
-
-            csrf_param = re.search(
-                '<meta name="csrf_param" content="(.+)"/>', result
-            ).group(1)
-            csrf_token = re.search(
-                '<meta name="csrf_token" content="(.+)"/>', result
-            ).group(1)
-            self._update_csrf(csrf_param, csrf_token)
-            self._check_has_cookies(self._session.cookie_jar, URL(self._base_url))
-
-            first_nonce = randbytes(32).hex()
-
-            self._logger.debug("Sending nonce")
             response = await self._post_raw(
-                "api/system/user_login_nonce",
-                {
-                    "csrf": self._active_csrf,
-                    "data": {"username": self._user, "firstnonce": first_nonce},
-                },
+                "api/system/user_logout", {"csrf": self._active_csrf}
             )
-            if response.status != 200:
-                self._logger.debug(
-                    "Authentication failed: can not send nonce, status is %s",
-                    response.status,
-                )
-                raise AuthenticationError("Failed to send nonce", AUTH_FAILURE_GENERAL)
-
             result = await _get_response_json(response)
             self._handle_csrf_dict(result)
             self._handle_error_dict(result)
-
-            server_nonce = result["servernonce"]
-            iterations = int(result["iterations"])
-            salt = result["salt"]
-
-            salted_password = hashlib.pbkdf2_hmac(
-                "sha256",
-                self._password.encode("utf-8"),
-                bytearray.fromhex(salt),
-                iterations,
-                32,
-            )
-
-            auth_msg = first_nonce + "," + server_nonce + "," + server_nonce
-            client_key = hmac.new(
-                "Client Key".encode("utf-8"), salted_password, hashlib.sha256
-            ).hexdigest()
-            stored_key = hashlib.sha256(bytearray.fromhex(client_key)).hexdigest()
-            client_signature = hmac.new(
-                auth_msg.encode("utf-8"), bytearray.fromhex(stored_key), hashlib.sha256
-            ).hexdigest()
-
-            client_proof = bytes(
-                key ^ sign
-                for (key, sign) in zip(
-                    bytearray.fromhex(client_key), bytearray.fromhex(client_signature)
-                )
-            )
-
-            self._logger.debug("Sending proof")
-            response = await self._post_raw(
-                "api/system/user_login_proof",
-                {
-                    "csrf": self._active_csrf,
-                    "data": {
-                        "clientproof": client_proof.hex(),
-                        "finalnonce": server_nonce,
-                    },
-                },
-            )
-            if response.status != 200:
-                self._logger.debug(
-                    "Authentication failed: can not send proof, status is %s",
-                    response.status,
-                )
-                raise AuthenticationError("Failed to send proof", AUTH_FAILURE_GENERAL)
-
-            result = await _get_response_json(response)
-            self._handle_csrf_dict(result)
-            self._handle_error_dict(result)
-
-            self._logger.debug("Authentication success")
-        except ApiCallError as ex:
-            if ex.category == APICALL_ERRCAT_CREDENTIALS:
-                raise AuthenticationError(
-                    "Invalid username or password", AUTH_FAILURE_CREDENTIALS
-                )
-            if ex.category == APICALL_ERRCAT_CSRF:
-                raise AuthenticationError("CSRF error, try again", AUTH_FAILURE_CSRF)
-
-            self._logger.debug("Authentication failed: %s", {repr(ex)})
-            raise AuthenticationError(
-                "Authentication failed due to api call error", AUTH_FAILURE_GENERAL
-            )
         except Exception as ex:
-            self._logger.debug("Authentication failed: %s", {repr(ex)})
-            raise AuthenticationError(
-                "Authentication failed due to unknown error", AUTH_FAILURE_GENERAL
-            )
+            self._logger.debug("Error during logout: %s", repr(ex))
 
+    @lock_external_call
     async def get(self, path: str, **kwargs: Any) -> Dict:
         """Perform GET request to the relative address."""
-        async with self._call_locker:
-            await self._ensure_initialized()
+        await self._ensure_initialized()
 
-            check_authorized: Callable[[ClientResponse, Dict], bool] = (
-                kwargs.get("check_authorized") or _check_authorized
-            )
+        check_authorized: Callable[[ClientResponse, Dict], bool] = (
+            kwargs.get("check_authorized") or _check_authorized
+        )
 
+        response = await self._get_raw(path)
+        result = await _get_response_json(response)
+
+        if not check_authorized(response, result):
+            self._logger.debug("GET seems unauthorized, trying to re-authenticate")
+            await self.authenticate()
             response = await self._get_raw(path)
             result = await _get_response_json(response)
 
             if not check_authorized(response, result):
-                self._logger.debug("GET seems unauthorized, trying to re-authenticate")
-                await self.authenticate()
-                response = await self._get_raw(path)
-                result = await _get_response_json(response)
+                raise ApiCallError(
+                    f"Api call error, status:{response.status}",
+                    APICALL_ERRCODE_UNAUTHORIZED,
+                    APICALL_ERRCAT_UNAUTHORIZED,
+                )
 
-                if not check_authorized(response, result):
-                    raise ApiCallError(
-                        f"Api call error, status:{response.status}",
-                        APICALL_ERRCODE_UNAUTHORIZED,
-                        APICALL_ERRCAT_UNAUTHORIZED,
-                    )
+        self._handle_csrf_dict(result)
+        self._handle_error_dict(result)
+        return result
 
-            self._handle_csrf_dict(result)
-            self._handle_error_dict(result)
-            return result
-
+    @lock_external_call
     async def post(self, path: str, payload: Dict, **kwargs: Any) -> Dict:
         """Perform POST request to the relative address with the specified body."""
-        async with self._call_locker:
-            await self._ensure_initialized()
+        await self._ensure_initialized()
 
-            check_authorized: Callable[[ClientResponse, Dict | None], bool] = (
-                kwargs.get("check_authorized") or _check_authorized
-            )
+        check_authorized: Callable[[ClientResponse, Dict | None], bool] = (
+            kwargs.get("check_authorized") or _check_authorized
+        )
+
+        dto = {"csrf": self._active_csrf, "data": payload}
+        if kwargs.get("extra_data") is not None:
+            for key, value in kwargs.get("extra_data", {}).items():
+                dto[key] = value
+
+        response = await self._post_raw(path, dto)
+        result = await _get_response_json(response)
+
+        if not check_authorized(response, result):
+            self._logger.debug("POST seems unauthorized, trying to re-authenticate")
+            await self.authenticate()
 
             dto = {"csrf": self._active_csrf, "data": payload}
             if kwargs.get("extra_data") is not None:
@@ -409,33 +463,24 @@ class HuaweiCoreApi:
 
             response = await self._post_raw(path, dto)
             result = await _get_response_json(response)
-
             if not check_authorized(response, result):
-                self._logger.debug("POST seems unauthorized, trying to re-authenticate")
-                await self.authenticate()
+                raise ApiCallError(
+                    f"Api call error, status:{response.status}",
+                    APICALL_ERRCODE_UNAUTHORIZED,
+                    APICALL_ERRCAT_UNAUTHORIZED,
+                )
 
-                dto = {"csrf": self._active_csrf, "data": payload}
-                if kwargs.get("extra_data") is not None:
-                    for key, value in kwargs.get("extra_data", {}).items():
-                        dto[key] = value
+        self._handle_csrf_dict(result)
+        self._handle_error_dict(result)
 
-                response = await self._post_raw(path, dto)
-                result = await _get_response_json(response)
-                if not check_authorized(response, result):
-                    raise ApiCallError(
-                        f"Api call error, status:{response.status}",
-                        APICALL_ERRCODE_UNAUTHORIZED,
-                        APICALL_ERRCAT_UNAUTHORIZED,
-                    )
+        return result
 
-            self._handle_csrf_dict(result)
-            self._handle_error_dict(result)
-
-            return result
-
+    @lock_external_call
+    @lock_auth_call
     async def disconnect(self) -> None:
         """Close session."""
         self._logger.debug("Disconnecting")
         if self._session is not None:
+            await self._try_logout()
             await self._session.close()
             self._session = None
