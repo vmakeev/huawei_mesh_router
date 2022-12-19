@@ -71,7 +71,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await coordinator.async_config_entry_first_refresh()
 
     config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
-    config_entry.async_on_unload(coordinator.unload)
 
     set_coordinator(hass, config_entry, coordinator)
 
