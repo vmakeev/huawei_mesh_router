@@ -28,10 +28,7 @@ from .helpers import (
     get_past_moment,
 )
 from .options import HuaweiIntegrationOptions
-from .update_coordinator import (
-    ActiveRoutersWatcher,
-    HuaweiControllerDataUpdateCoordinator,
-)
+from .update_coordinator import ActiveRoutersWatcher, HuaweiDataUpdateCoordinator
 
 UNITS_CLIENTS: Final = "clients"
 
@@ -160,7 +157,7 @@ async def async_setup_entry(
 #   watch_for_additional_routers
 # ---------------------------
 def watch_for_additional_routers(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     config_entry: ConfigEntry,
     integration_options: HuaweiIntegrationOptions,
     async_add_entities: AddEntitiesCallback,
@@ -223,14 +220,12 @@ def watch_for_additional_routers(
 # ---------------------------
 #   HuaweiSensor
 # ---------------------------
-class HuaweiSensor(
-    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SensorEntity
-):
+class HuaweiSensor(CoordinatorEntity[HuaweiDataUpdateCoordinator], SensorEntity):
     entity_description: HuaweiSensorEntityDescription
 
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         description: HuaweiSensorEntityDescription,
     ) -> None:
         """Initialize."""
@@ -268,7 +263,7 @@ class HuaweiUptimeSensor(HuaweiSensor):
 
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         description: HuaweiUptimeSensorEntityDescription,
     ) -> None:
         """Initialize."""
@@ -298,7 +293,7 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
 
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         description: HuaweiClientsSensorEntityDescription,
         integration_options: HuaweiIntegrationOptions,
         devices_predicate: Callable[[ConnectedDevice], bool],

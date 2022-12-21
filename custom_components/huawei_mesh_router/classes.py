@@ -1,5 +1,6 @@
 """Huawei Mesh Router component classes."""
 
+from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Tuple
 
 from homeassistant.backports.enum import StrEnum
@@ -7,6 +8,15 @@ from homeassistant.backports.enum import StrEnum
 from .client.classes import MAC_ADDR
 
 DEVICE_TAG = str
+
+
+# ---------------------------
+#   ZoneInfo
+# ---------------------------
+@dataclass()
+class ZoneInfo:
+    name: str
+    entity_id: str
 
 
 # ---------------------------
@@ -94,6 +104,11 @@ class ConnectedDevice:
     def connected_via_id(self) -> str | None:
         """Return the id of parent device."""
         return self._data.get("connected_via_id")
+
+    @property
+    def zone(self) -> ZoneInfo | None:
+        """Return the zone of the device."""
+        return self._data.get("zone")
 
     @property
     def interface_type(self) -> HuaweiInterfaceType | None:

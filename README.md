@@ -74,6 +74,7 @@ Advanced settings include:
 | Enabling or disabling [Number of connected devices for each router](docs/sensors.md#number-of-connected-devices) |  Enabled   |
 | Enabling or disabling [Device tags](docs/device-tags.md#device-tags)                                             |  Disabled  |
 | Enabling or disabling [Devices tracking](docs/device-tracking.md#devices-tracking)                               |  Enabled   |
+| Enabling or disabling [Router-specific zones](docs/device-tracking.md#router-specific-zones)                     |  Disabled   |
 
 
 ![Options 1/2](docs/images/options_1.png)
@@ -83,7 +84,7 @@ Advanced settings include:
 
 ## Devices tracking
 
-The component allows you to track all devices connected to your mesh network. [Read more](docs/device-tracking.md)
+The component allows you to track all devices connected to your mesh network. Each router can provide information about the zone to which all devices connected to it will be assigned (if enabled in the [advanced options](#advanced-options)). [Read more](docs/device-tracking.md)
 
 You can attach one or more tags to each client device in order to be able to use in automation the number of devices marked with a tag, connected to a specific router, or to the entire mesh network. [Read more](docs/device-tags.md#device-tags)
 
@@ -109,8 +110,8 @@ You can attach one or more tags to each client device in order to be able to use
 * Device Wi-Fi Access ([read more](docs/controls.md#device-wi-fi-access))
 
 ### Selects
-
 * Wi-Fi access control mode ([read more](docs/controls.md#wi-fi-access-control-mode))
+* Router-specific zone ([read more](docs/controls.md#router-specific-zone))
 
 ## Services
 

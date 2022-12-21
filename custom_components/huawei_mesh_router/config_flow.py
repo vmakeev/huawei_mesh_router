@@ -21,6 +21,7 @@ from .client.coreapi import AuthenticationError
 from .client.huaweiapi import HuaweiApi
 from .const import (
     DEFAULT_DEVICE_TRACKER,
+    DEFAULT_DEVICE_TRACKER_ZONES,
     DEFAULT_DEVICES_TAGS,
     DEFAULT_HOST,
     DEFAULT_NAME,
@@ -34,6 +35,7 @@ from .const import (
     DEFAULT_WIFI_ACCESS_SWITCHES,
     DOMAIN,
     OPT_DEVICE_TRACKER,
+    OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_ROUTER_CLIENTS_SENSORS,
     OPT_WIFI_ACCESS_SWITCHES,
@@ -59,7 +61,7 @@ def configured_instances(hass):
 class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     """HuaweiControllerConfigFlow class"""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self):
         """Initialize HuaweiControllerConfigFlow."""
@@ -217,6 +219,12 @@ class HuaweiControllerOptionsFlowHandler(OptionsFlow):
                         OPT_DEVICE_TRACKER,
                         default=self.options.get(
                             OPT_DEVICE_TRACKER, DEFAULT_DEVICE_TRACKER
+                        ),
+                    ): bool,
+                    vol.Required(
+                        OPT_DEVICE_TRACKER_ZONES,
+                        default=self.options.get(
+                            OPT_DEVICE_TRACKER_ZONES, DEFAULT_DEVICE_TRACKER_ZONES
                         ),
                     ): bool,
                 },

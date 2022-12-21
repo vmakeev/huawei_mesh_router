@@ -23,7 +23,7 @@ from .helpers import (
     get_coordinator,
     get_past_moment,
 )
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator
+from .update_coordinator import HuaweiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,13 +96,13 @@ async def async_setup_entry(
 #   HuaweiBinarySensor
 # ---------------------------
 class HuaweiBinarySensor(
-    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], BinarySensorEntity
+    CoordinatorEntity[HuaweiDataUpdateCoordinator], BinarySensorEntity
 ):
     entity_description: HuaweiBinarySensorEntityDescription
 
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         description: HuaweiBinarySensorEntityDescription,
     ) -> None:
         """Initialize."""
@@ -139,7 +139,7 @@ class HuaweiWanBinarySensor(HuaweiBinarySensor):
 
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         description: HuaweiBinarySensorEntityDescription,
     ) -> None:
         """Initialize."""

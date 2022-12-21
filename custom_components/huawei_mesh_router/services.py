@@ -14,7 +14,7 @@ from homeassistant.helpers.service import verify_domain_control
 
 from .client.classes import MAC_ADDR, FilterAction, FilterMode
 from .const import DATA_KEY_COORDINATOR, DATA_KEY_SERVICES, DOMAIN
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator
+from .update_coordinator import HuaweiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,15 +64,13 @@ SERVICES = [
 # ---------------------------
 def _find_coordinator(
     hass: HomeAssistant, device_mac: MAC_ADDR
-) -> HuaweiControllerDataUpdateCoordinator | None:
+) -> HuaweiDataUpdateCoordinator | None:
     _LOGGER.debug("Looking for coordinators with device '%s'", device_mac)
     for key, item in hass.data[DOMAIN].items():
         if key == DATA_KEY_SERVICES:
             continue
         coordinator = item.get(DATA_KEY_COORDINATOR)
-        if not coordinator or not isinstance(
-            coordinator, HuaweiControllerDataUpdateCoordinator
-        ):
+        if not coordinator or not isinstance(coordinator, HuaweiDataUpdateCoordinator):
             continue
         for mac, _ in coordinator.connected_devices.items():
             if mac == device_mac:

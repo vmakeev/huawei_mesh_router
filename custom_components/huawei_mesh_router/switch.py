@@ -35,7 +35,7 @@ from .update_coordinator import (
     SWITCH_DEVICE_ACCESS,
     ActiveRoutersWatcher,
     ClientWirelessDevicesWatcher,
-    HuaweiControllerDataUpdateCoordinator,
+    HuaweiDataUpdateCoordinator,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ ENTITY_DOMAIN: Final = "switch"
 #   _add_nfc_if_available
 # ---------------------------
 async def _add_nfc_if_available(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch],
     mac: MAC_ADDR,
     router: ConnectedDevice,
@@ -81,7 +81,7 @@ async def _add_nfc_if_available(
 #   _add_access_switch_if_available
 # ---------------------------
 async def _add_access_switch_if_available(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     known_access_switches: dict[MAC_ADDR, HuaweiSwitch],
     mac: MAC_ADDR,
     device: ConnectedDevice,
@@ -140,7 +140,7 @@ async def async_setup_entry(
 #   watch_for_additional_routers
 # ---------------------------
 def watch_for_additional_routers(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
@@ -190,12 +190,10 @@ def watch_for_additional_routers(
 # ---------------------------
 #   HuaweiSwitch
 # ---------------------------
-class HuaweiSwitch(
-    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], SwitchEntity, ABC
-):
+class HuaweiSwitch(CoordinatorEntity[HuaweiDataUpdateCoordinator], SwitchEntity, ABC):
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         switch_name: str,
         device_mac: MAC_ADDR | None,
     ) -> None:
@@ -268,7 +266,7 @@ class HuaweiSwitch(
 class HuaweiNfcSwitch(HuaweiSwitch):
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         device: ConnectedDevice | None,
     ) -> None:
         """Initialize."""
@@ -294,7 +292,7 @@ class HuaweiNfcSwitch(HuaweiSwitch):
 #   HuaweiWifi80211RSwitch
 # ---------------------------
 class HuaweiWifi80211RSwitch(HuaweiSwitch):
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
         super().__init__(coordinator, SWITCH_WIFI_80211R, None)
 
@@ -317,7 +315,7 @@ class HuaweiWifi80211RSwitch(HuaweiSwitch):
 #   HuaweiWifiTWTSwitch
 # ---------------------------
 class HuaweiWifiTWTSwitch(HuaweiSwitch):
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
         super().__init__(coordinator, SWITCH_WIFI_TWT, None)
 
@@ -340,7 +338,7 @@ class HuaweiWifiTWTSwitch(HuaweiSwitch):
 #   HuaweiWlanFilterSwitch
 # ---------------------------
 class HuaweiWlanFilterSwitch(HuaweiSwitch):
-    def __init__(self, coordinator: HuaweiControllerDataUpdateCoordinator) -> None:
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
         super().__init__(coordinator, SWITCH_WLAN_FILTER, None)
 
@@ -371,7 +369,7 @@ class HuaweiWlanFilterSwitch(HuaweiSwitch):
 class HuaweiDeviceAccessSwitch(HuaweiSwitch):
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         device: ConnectedDevice,
     ) -> None:
         """Initialize."""

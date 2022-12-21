@@ -11,9 +11,11 @@ from homeassistant.helpers.storage import Store
 
 from .client.huaweiapi import HuaweiApi
 from .const import (
+    DEFAULT_DEVICE_TRACKER_ZONES,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     OPT_DEVICE_TRACKER,
+    OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_ROUTER_CLIENTS_SENSORS,
     OPT_WIFI_ACCESS_SWITCHES,
@@ -23,7 +25,7 @@ from .const import (
 from .helpers import pop_coordinator, set_coordinator
 from .options import HuaweiIntegrationOptions
 from .services import async_setup_services, async_unload_services
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator
+from .update_coordinator import HuaweiDataUpdateCoordinator
 
 CONFIG_SCHEMA = config_validation.removed(DOMAIN, raise_if_present=False)
 
@@ -59,14 +61,21 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     integration_options = HuaweiIntegrationOptions(config_entry)
 
     if integration_options.devices_tags:
-        store = Store(
+        tags_store = Store(
             hass, STORAGE_VERSION, f"huawei_mesh_{config_entry.entry_id}_tags"
         )
     else:
-        store = None
+        tags_store = None
 
-    coordinator = HuaweiControllerDataUpdateCoordinator(
-        hass, config_entry, integration_options, store
+    if integration_options.device_tracker_zones:
+        zones_store = Store(
+            hass, STORAGE_VERSION, f"huawei_mesh_{config_entry.entry_id}_router_zones"
+        )
+    else:
+        zones_store = None
+
+    coordinator = HuaweiDataUpdateCoordinator(
+        hass, config_entry, integration_options, tags_store, zones_store
     )
     await coordinator.async_config_entry_first_refresh()
 
@@ -108,9 +117,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     )
     if unload_ok:
         coordinator = pop_coordinator(hass, config_entry)
-        if coordinator and isinstance(
-            coordinator, HuaweiControllerDataUpdateCoordinator
-        ):
+        if coordinator and isinstance(coordinator, HuaweiDataUpdateCoordinator):
             coordinator.unload()
     await async_unload_services(hass, config_entry)
     return unload_ok
@@ -140,6 +147,11 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
             OPT_DEVICE_TRACKER: True,
         }
         config_entry.version = 2
+
+    if config_entry.version == 2:
+        _LOGGER.debug("Migrating to version 3")
+        updated_options[OPT_DEVICE_TRACKER_ZONES] = DEFAULT_DEVICE_TRACKER_ZONES
+        config_entry.version = 3
 
     hass.config_entries.async_update_entry(
         config_entry, data=updated_data, options=updated_options

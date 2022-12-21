@@ -6,21 +6,21 @@ This feature can be disabled in [advanced options](../README.md#advanced-options
 
 Each tracked device exposes the following attributes:
 
-|    Attribute     |                                          Description                                            | Only when connected |
-|------------------|-------------------------------------------------------------------------------------------------|---------------------|
-| `source_type`    | Always `router`                                                                                 | No                  |
-| `ip`             | Device IP address                                                                               | Yes                 |
-| `mac`            | MAC address of the device                                                                       | No                  |
-| `hostname`       | Device name according to the device itself                                                      | No                  |
-| `connected_via`  | The name of the router through which the connection was made                                    | Yes                 |
-| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`)                                             | Yes                 |
-| `rssi`           | Signal strength for wireless connections                                                        | Yes                 |
-| `is_guest`       | Is the device connected to the guest network                                                    | Yes                 |
-| `is_hilink`      | Is the device connected via HiLink                                                              | Yes                 |
-| `is_router`      | Is the device are router                                                                        | Yes                 |
-| `tags`           | List of [tags](device-tags.md#device-tags) that marked the device                               | No                  |
-| `filter_list`    | Blacklist, Whitelist or None (see [access control mode](controls.md#wi-fi-access-control-mode)) | No                  |
-| `friendly_name`  | Device name provided by the router                                                              | No                  |
+|    Attribute     |                                          Description                                                                     | Only when connected |
+|------------------|--------------------------------------------------------------------------------------------------------------------------|---------------------|
+| `source_type`    | `router` if the router-specific zones are disabled in [advanced options](../README.md#advanced-options), `gps` otherwise | No                  |
+| `ip`             | Device IP address                                                                                                        | Yes                 |
+| `mac`            | MAC address of the device                                                                                                | No                  |
+| `hostname`       | Device name according to the device itself                                                                               | No                  |
+| `connected_via`  | The name of the router through which the connection was made                                                             | Yes                 |
+| `interface_type` | Connection interface type (`5GHz`, `2.4GHz`, `LAN`)                                                                      | Yes                 |
+| `rssi`           | Signal strength for wireless connections                                                                                 | Yes                 |
+| `is_guest`       | Is the device connected to the guest network                                                                             | Yes                 |
+| `is_hilink`      | Is the device connected via HiLink                                                                                       | Yes                 |
+| `is_router`      | Is the device are router                                                                                                 | Yes                 |
+| `tags`           | List of [tags](device-tags.md#device-tags) that marked the device                                                        | No                  |
+| `filter_list`    | Blacklist, Whitelist or None (see [access control mode](controls.md#wi-fi-access-control-mode))                          | No                  |
+| `friendly_name`  | Device name provided by the router                                                                                       | No                  |
 
 ![Device tracker](images/device_tracker.png)
 
@@ -37,3 +37,9 @@ My phone: Rssi
 
 Result:
 My phone: Rssi **30** *via* **Kitchen router** (**5GHz**)
+
+
+## Router-specific zones
+
+The component allows you to assign each router in the mesh network its own zone. 
+In this case, all devices connected to this router will be considered to be located in the specified zone. This can be convenient for writing automations that track the number of people in any zone, or as an alternative or addition to BLE trackers. [Read more](controls.md#router-specific-zone)

@@ -98,3 +98,18 @@ Allows you to set Wi-Fi access to blacklist or whitelist mode. In blacklist mode
 The select will not be added to Home Assistant if the Primary router does not support [Wi-Fi Access Control](#wi-fi-access-control).
 
 _Note: this select is not enabled by default. If you need to use this feature, please enable it manually. Don't use this feature if you don't know what you are doing._
+
+### Router-specific zone
+
+Allows you to assign each router in the mesh network its own zone. 
+In this case, all devices connected to this router will be considered to be located in the specified zone.
+
+![Zone select](images/zone_selector.png)
+
+To clear the area linked to the router, select the top empty drop-down list item. In this case, the devices connected to the router will be assigned to the "Home" zone.
+
+![Empty zone selector](images/zone_selector_empty.png)
+
+These selects will not be added to Home Assistant if this feature is not enabled in [advanced options](../README.md#advanced-options).
+
+_Note: zone selectors for additional routers are located in their own devices. These settings are stored only in the file system of your Home-Assistant server: `<home assistant config folder>/.storage/huawei_mesh_<long_config_id>_router_zones_`
