@@ -112,4 +112,4 @@ To clear the area linked to the router, select the top empty drop-down list item
 
 These selects will not be added to Home Assistant if this feature is not enabled in [advanced options](../README.md#advanced-options).
 
-_Note: zone selectors for additional routers are located in their own devices. These settings are stored only in the file system of your Home-Assistant server: `<home assistant config folder>/.storage/huawei_mesh_<long_config_id>_router_zones_`
+_Note: zone selectors for additional routers are located in their own devices. These settings are stored only in the file system of your Home-Assistant server: `<home assistant config folder>/.storage/huawei_mesh_<long_config_id>_router_zones`_
