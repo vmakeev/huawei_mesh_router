@@ -31,13 +31,14 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 ## Supported models
 
-|                                        Name                                        |  Model | Confirmed |           Notes                         |
-|------------------------------------------------------------------------------------|--------|-----------|-----------------------------------------|
-| [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | All features are available              |
-| [Huawei WiFi AX3 Dual-core](https://consumer.huawei.com/en/routers/ax3-dual-core/) | WS7100 |    Yes    | No NFC switches (unsupported by router) |
-| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |    Yes    | ---                                     |
-| [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     | ---                                     |
-| Other routers with HarmonyOS                                                       | ------ |    No     | Will most likely work                   
+|                                        Name                                        |  Model | Confirmed |                    Notes                    |
+|------------------------------------------------------------------------------------|--------|-----------|---------------------------------------------|
+| [Huawei WiFi AX3 Dual-core](https://consumer.huawei.com/en/routers/ax3-dual-core/) | WS7100 |    Yes    | No NFC switches (unsupported by router)     |
+| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |    Yes    |                                             |
+| [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     |                                             |
+| [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | My router model. All features are available |
+| [Huawei WiFi Mesh 7](https://consumer.huawei.com/en/routers/wifi-mesh7/)           | WS8800 |    Yes    |                                             |
+| Other routers with HarmonyOS                                                       | ------ |    No     | Will most likely work                       |             
 
 ## Installation
 
