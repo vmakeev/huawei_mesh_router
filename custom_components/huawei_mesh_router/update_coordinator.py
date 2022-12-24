@@ -397,7 +397,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def zones_map(self) -> ZonesMap:
-        """Return the tags map."""
+        """Return the zones map."""
         if self._integration_options.device_tracker_zones:
             return self._zones_map
         else:
