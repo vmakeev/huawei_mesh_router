@@ -526,7 +526,7 @@ class HuaweiApi:
         filter_action: FilterAction,
         device_mac: MAC_ADDR,
         device_name: str | None,
-    ) -> (bool | None, dict[str, Any] | None, dict[str, Any] | None):
+    ) -> Tuple[bool | None, dict[str, Any] | None, dict[str, Any] | None]:
         """Return (need_action, whitelist, blacklist)"""
         whitelist = state.get("WMACAddresses")
         blacklist = state.get("BMACAddresses")

@@ -10,7 +10,7 @@ import homeassistant.util.dt as dt
 
 from .client.classes import MAC_ADDR
 from .const import DATA_KEY_COORDINATOR, DOMAIN
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator
+from .update_coordinator import HuaweiDataUpdateCoordinator
 
 
 class ConfigurationError(Exception):
@@ -29,7 +29,7 @@ class ConfigurationError(Exception):
 # ---------------------------
 def get_coordinator(
     hass: HomeAssistant, config_entry: ConfigEntry
-) -> HuaweiControllerDataUpdateCoordinator:
+) -> HuaweiDataUpdateCoordinator:
     result = (
         hass.data.get(DOMAIN, {})
         .get(config_entry.entry_id, {})
@@ -45,7 +45,7 @@ def get_coordinator(
 # ---------------------------
 def pop_coordinator(
     hass: HomeAssistant, config_entry: ConfigEntry
-) -> HuaweiControllerDataUpdateCoordinator | None:
+) -> HuaweiDataUpdateCoordinator | None:
     data = hass.data.get(DOMAIN, {}).get(config_entry.entry_id, {})
     if DATA_KEY_COORDINATOR in data:
         return data.pop(DATA_KEY_COORDINATOR)
@@ -58,7 +58,7 @@ def pop_coordinator(
 def set_coordinator(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
 ) -> None:
     hass.data.setdefault(DOMAIN, {}).setdefault(config_entry.entry_id, {})[
         DATA_KEY_COORDINATOR
@@ -83,7 +83,7 @@ def generate_entity_name(function_displayed_name: str, device_name: str) -> str:
 #   generate_entity_id
 # ---------------------------
 def generate_entity_id(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     entity_domain: str,
     function_displayed_name: str,
     device_name: str,
@@ -96,7 +96,7 @@ def generate_entity_id(
 #   generate_entity_unique_id
 # ---------------------------
 def generate_entity_unique_id(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     function_uid: str,
     device_mac: MAC_ADDR | None = None,
 ) -> str:

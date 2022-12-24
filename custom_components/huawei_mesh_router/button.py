@@ -19,10 +19,7 @@ from .helpers import (
     generate_entity_unique_id,
     get_coordinator,
 )
-from .update_coordinator import (
-    ActiveRoutersWatcher,
-    HuaweiControllerDataUpdateCoordinator,
-)
+from .update_coordinator import ActiveRoutersWatcher, HuaweiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,14 +74,12 @@ def _watch_for_additional_routers(
 # ---------------------------
 #   HuaweiButton
 # ---------------------------
-class HuaweiButton(
-    CoordinatorEntity[HuaweiControllerDataUpdateCoordinator], ButtonEntity, ABC
-):
+class HuaweiButton(CoordinatorEntity[HuaweiDataUpdateCoordinator], ButtonEntity, ABC):
     _update_url: str
 
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         action_name: str,
         device_mac: MAC_ADDR | None,
     ) -> None:
@@ -132,7 +127,7 @@ class HuaweiButton(
 class HuaweiRebootButton(HuaweiButton):
     def __init__(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         device: ConnectedDevice | None,
     ) -> None:
         """Initialize."""

@@ -15,6 +15,7 @@ OPT_WIFI_ACCESS_SWITCHES = "wifi_access_switches"
 OPT_ROUTER_CLIENTS_SENSORS = "router_clients_sensors"
 OPT_DEVICES_TAGS = "devices_tags"
 OPT_DEVICE_TRACKER = "device_tracker"
+OPT_DEVICE_TRACKER_ZONES = "device_tracker_zones"
 
 DEFAULT_HOST: Final = "192.168.3.1"
 DEFAULT_USER: Final = "admin"
@@ -28,6 +29,7 @@ DEFAULT_WIFI_ACCESS_SWITCHES: Final = False
 DEFAULT_ROUTER_CLIENTS_SENSORS: Final = True
 DEFAULT_DEVICES_TAGS: Final = False
 DEFAULT_DEVICE_TRACKER: Final = True
+DEFAULT_DEVICE_TRACKER_ZONES: Final = False
 
 ATTR_MANUFACTURER: Final = "Huawei"
 PLATFORMS: Final = [

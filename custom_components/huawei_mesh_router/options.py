@@ -5,11 +5,13 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 
 from .const import (
     DEFAULT_DEVICE_TRACKER,
+    DEFAULT_DEVICE_TRACKER_ZONES,
     DEFAULT_DEVICES_TAGS,
     DEFAULT_ROUTER_CLIENTS_SENSORS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_WIFI_ACCESS_SWITCHES,
     OPT_DEVICE_TRACKER,
+    OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_ROUTER_CLIENTS_SENSORS,
     OPT_WIFI_ACCESS_SWITCHES,
@@ -55,6 +57,13 @@ class HuaweiIntegrationOptions:
         """Return option 'device tracker' value"""
         return get_option(
             self._config_entry, OPT_DEVICE_TRACKER, DEFAULT_DEVICE_TRACKER
+        )
+
+    @property
+    def device_tracker_zones(self) -> bool:
+        """Return option 'device tracker zones' value"""
+        return get_option(
+            self._config_entry, OPT_DEVICE_TRACKER_ZONES, DEFAULT_DEVICE_TRACKER_ZONES
         )
 
     @property

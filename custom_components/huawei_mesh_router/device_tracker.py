@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
-from homeassistant.components.device_tracker.const import SOURCE_TYPE_ROUTER
+from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -15,9 +15,9 @@ from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
 from .helpers import get_coordinator
 from .options import HuaweiIntegrationOptions
-from .update_coordinator import HuaweiControllerDataUpdateCoordinator
+from .update_coordinator import HuaweiDataUpdateCoordinator
 
-FILTER_ATTRS = ["ip_address", "connected_via_id", "vendor_class_id"]
+FILTER_ATTRS = ["ip_address", "connected_via_id", "vendor_class_id", "zone"]
 
 
 # ---------------------------
@@ -47,7 +47,7 @@ async def async_setup_entry(
 # ---------------------------
 @callback
 def update_items(
-    coordinator: HuaweiControllerDataUpdateCoordinator,
+    coordinator: HuaweiDataUpdateCoordinator,
     integration_options: HuaweiIntegrationOptions,
     async_add_entities: AddEntitiesCallback,
     tracked: dict[MAC_ADDR, HuaweiTracker],
@@ -73,10 +73,11 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
         self,
         device: ConnectedDevice,
         integration_options: HuaweiIntegrationOptions,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
     ) -> None:
         """Initialize the tracked device."""
         self.device: ConnectedDevice = device
+        self._use_zones = integration_options.device_tracker_zones
 
         if integration_options.devices_tags:
             self._filter_attrs = FILTER_ATTRS
@@ -87,6 +88,16 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
         super().__init__(coordinator)
 
     @property
+    def state(self) -> str:
+        if self._use_zones and self.is_connected:
+            return (
+                self.device.zone.name
+                if self.device and self.device.zone
+                else super().state
+            )
+        return super().state
+
+    @property
     def is_connected(self) -> bool:
         """Return true if the client is connected to the network."""
         return self.device.is_active
@@ -94,7 +105,7 @@ class HuaweiTracker(CoordinatorEntity, ScannerEntity):
     @property
     def source_type(self) -> str:
         """Return the source type of the client."""
-        return SOURCE_TYPE_ROUTER
+        return SourceType.GPS if self._use_zones else SourceType.ROUTER
 
     @property
     def name(self) -> str:

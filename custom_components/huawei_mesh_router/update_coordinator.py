@@ -6,6 +6,7 @@ from functools import wraps
 import logging
 from typing import Any, Callable, Final, Iterable, Tuple
 
+from homeassistant.components.zone.const import DOMAIN as ZONE_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
@@ -28,6 +29,7 @@ from .classes import (
     ConnectedDevice,
     HuaweiInterfaceType,
     HuaweiWlanFilterMode,
+    ZoneInfo,
 )
 from .client.classes import (
     MAC_ADDR,
@@ -60,6 +62,7 @@ _LOGGER = logging.getLogger(__name__)
 _PRIMARY_ROUTER_IDENTITY: Final = "primary_router"
 
 SELECT_WLAN_FILTER_MODE: Final = "wlan_filter_mode_select"
+SELECT_ROUTER_ZONE: Final = "router_zone_select"
 SWITCH_DEVICE_ACCESS: Final = "wlan_device_access_switch"
 
 
@@ -84,7 +87,7 @@ class HuaweiConnectedDevicesWatcher:
         self._devices_predicate = devices_predicate
 
     def _get_difference(
-        self, coordinator: HuaweiControllerDataUpdateCoordinator
+        self, coordinator: HuaweiDataUpdateCoordinator
     ) -> Tuple[
         Iterable[Tuple[MAC_ADDR, ConnectedDevice]],
         Iterable[Tuple[EntityRegistry, MAC_ADDR, ConnectedDevice]],
@@ -119,7 +122,7 @@ class HuaweiConnectedDevicesWatcher:
 
     def look_for_changes(
         self,
-        coordinator: HuaweiControllerDataUpdateCoordinator,
+        coordinator: HuaweiDataUpdateCoordinator,
         on_added: Callable[[MAC_ADDR, ConnectedDevice], None] | None = None,
         on_removed: Callable[[EntityRegistry, MAC_ADDR, ConnectedDevice], None]
         | None = None,
@@ -221,6 +224,42 @@ class TagsMap:
 
 
 # ---------------------------
+#   ZonesMap
+# ---------------------------
+class ZonesMap:
+    def __init__(self, zones_map_storage: Store):
+        """Initialize."""
+        self._storage: Store = zones_map_storage
+        self._devices_to_zones: dict[str, str] = {}
+        self._is_loaded: bool = False
+
+    @property
+    def is_loaded(self) -> bool:
+        """Return true when zones are loaded."""
+        return self._is_loaded
+
+    async def load(self):
+        """Load the zones from the storage."""
+        _LOGGER.debug("Stored zones loading started")
+        self._devices_to_zones.clear()
+        self._devices_to_zones = await self._storage.async_load() or {}
+        self._is_loaded = True
+        _LOGGER.debug("Stored zones loading finished")
+
+    def get_zone_id(self, device_id: str) -> str | None:
+        """Return the zone id of the device"""
+        return self._devices_to_zones.get(device_id)
+
+    async def set_zone_id(self, device_id: str, zone_id: str | None) -> None:
+        """Set the zone id to the device"""
+        if not self.is_loaded:
+            await self.load()
+
+        self._devices_to_zones[device_id] = zone_id
+        await self._storage.async_save(self._devices_to_zones)
+
+
+# ---------------------------
 #   suppress_exceptions_when_unloaded
 # ---------------------------
 def suppress_exceptions_when_unloaded(func):
@@ -264,22 +303,31 @@ def suppress_update_exception(error_template: str):
 # ---------------------------
 #   HuaweiControllerDataUpdateCoordinator
 # ---------------------------
-class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
+class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
         integration_options: HuaweiIntegrationOptions,
         tags_map_storage: Store | None,
+        zones_map_storage: Store | None,
     ) -> None:
         """Initialize HuaweiController."""
         self._is_unloaded = False
         self._integration_options = integration_options
+
         self._tags_map: TagsMap | None = (
             TagsMap(tags_map_storage)
             if self._integration_options.devices_tags and tags_map_storage
             else None
         )
+
+        self._zones_map: ZonesMap | None = (
+            ZonesMap(zones_map_storage)
+            if self._integration_options.device_tracker_zones and zones_map_storage
+            else None
+        )
+
         self._connected_devices: dict[MAC_ADDR, ConnectedDevice] = {}
         self._wan_info: HuaweiConnectionInfo | None = None
 
@@ -348,6 +396,20 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             raise CoordinatorError("Devices tags are disabled by integration options.")
 
     @property
+    def zones_map(self) -> ZonesMap:
+        """Return the zones map."""
+        if self._integration_options.device_tracker_zones:
+            return self._zones_map
+        else:
+            raise CoordinatorError(
+                "Devices tracker zones are disabled by integration options."
+            )
+
+    @property
+    def zones(self) -> Iterable[ZoneInfo]:
+        return self._zones
+
+    @property
     def primary_router_api(self) -> HuaweiApi:
         return self._select_api(None)
 
@@ -407,6 +469,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_update(self) -> None:
         """Asynchronous update of all data."""
         _LOGGER.debug("Update started")
+        await self._update_zones()
         await self._update_wlan_filter_info()
         await self._update_connected_devices()
         await self._update_apis()
@@ -415,6 +478,28 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_switches()
         await self._update_selects()
         _LOGGER.debug("Update completed")
+
+    @suppress_update_exception("Can not update zones %s")
+    async def _update_zones(self) -> None:
+        if not self._integration_options.device_tracker_zones:
+            return
+        _LOGGER.debug("Updating zones")
+
+        if not self._zones_map.is_loaded:
+            await self._zones_map.load()
+
+        def get_zones() -> Iterable[ZoneInfo]:
+            er = entity_registry.async_get(self.hass)
+            for er_entity_id, er_entry in er.entities.items():
+                if er_entry.domain == ZONE_DOMAIN:
+                    yield ZoneInfo(
+                        name=er_entry.name or er_entry.original_name,
+                        entity_id=er_entity_id,
+                    )
+
+        self._zones = list(sorted(get_zones(), key=lambda zone: zone.name))
+
+        _LOGGER.debug("Zones updated: %s", self._zones)
 
     @suppress_update_exception("Can not update wan info: %s")
     async def _update_wan_info(self) -> None:
@@ -490,7 +575,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Updating apis")
         self._routersWatcher.look_for_changes(self, on_router_added, on_router_removed)
 
-    @suppress_update_exception("Can not update wlan filter mode: %s")
+    @suppress_update_exception("Can not update selects: %s")
     async def _update_selects(self) -> None:
         """Asynchronous update of selects states."""
         _LOGGER.debug("Updating selects states")
@@ -512,6 +597,32 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                 state = None
             new_states[SELECT_WLAN_FILTER_MODE] = state
             _LOGGER.debug("WLan filter mode select state updated to %s", state)
+
+        if self._integration_options.device_tracker_zones:
+            _LOGGER.debug("Updating Zone select for %s", _PRIMARY_ROUTER_IDENTITY)
+            state = self._zones_map.get_zone_id(_PRIMARY_ROUTER_IDENTITY)
+            new_states[f"{SELECT_ROUTER_ZONE}"] = state
+            _LOGGER.debug(
+                "Zone (%s) state updated to %s", _PRIMARY_ROUTER_IDENTITY, state
+            )
+
+            for mac, api in self._apis.items():
+                if mac == _PRIMARY_ROUTER_IDENTITY:
+                    continue
+                device = self._connected_devices.get(mac)
+                _LOGGER.debug(
+                    "Updating Zone select for %s", device.name if device else mac
+                )
+                if device and device.is_active:
+                    state = self._zones_map.get_zone_id(device.mac)
+                else:
+                    state = None
+                new_states[f"{SELECT_ROUTER_ZONE}_{mac}"] = state
+                _LOGGER.debug(
+                    "Zone (%s) state updated to %s",
+                    device.name if device else mac,
+                    state,
+                )
 
         _LOGGER.debug("Selects states updated")
         self._select_states = new_states
@@ -546,6 +657,8 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("WLan filter switch state updated to %s", state)
 
         for mac, api in self._apis.items():
+            if mac == _PRIMARY_ROUTER_IDENTITY:
+                continue
             device = self._connected_devices.get(mac)
             if device and device.is_active:
                 await self.update_router_nfc_switch(api, device, new_states)
@@ -613,7 +726,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
 
         mesh_routers = get_mesh_routers(devices_topology)
 
-        # [MAC_ADDRESS_OF_DEVICE, { "name": PARENT_ROUTER_NAME, "id": PARENT_ROUTER_MAC}]
+        # [MAC_ADDRESS_OF_DEVICE, { "name": PARENT_ROUTER_NAME, "id": PARENT_ROUTER_MAC, "zone": ROUTER_ZONE}]
         devices_to_routers: dict[MAC_ADDR, Any] = {}
         for mesh_router in mesh_routers:
             # find same device in devices_data by MAC address
@@ -680,6 +793,30 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                     mac,
                     {"name": self.primary_router_name, "id": CONNECTED_VIA_ID_PRIMARY},
                 )
+
+                zone_id = None
+
+                if self._integration_options.device_tracker_zones:
+                    if device_data.is_router:
+                        zone_id = self._zones_map.get_zone_id(mac)
+                    elif connected_via.get("id") == CONNECTED_VIA_ID_PRIMARY:
+                        zone_id = self._zones_map.get_zone_id(_PRIMARY_ROUTER_IDENTITY)
+                    else:
+                        zone_id = self._zones_map.get_zone_id(connected_via.get("id"))
+
+                zone_name = (
+                    next(
+                        (
+                            zone.name
+                            for zone in self._zones
+                            if zone.entity_id == zone_id
+                        ),
+                        None,
+                    )
+                    if zone_id
+                    else None
+                )
+
                 device.update_device_data(
                     name,
                     host_name,
@@ -694,6 +831,9 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                     is_hilink=device_data.is_hilink,
                     is_router=device_data.is_router,
                     connected_via_id=connected_via.get("id"),
+                    zone=ZoneInfo(name=zone_name, entity_id=zone_id)
+                    if zone_id
+                    else None,
                 )
             else:
                 device.update_device_data(name, host_name, False, tags, filter_mode)
@@ -743,7 +883,8 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> str | None:
         """Return the state of the specified select."""
         key = select_name if not device_mac else f"{select_name}_{device_mac}"
-        return self._select_states.get(key)
+        state = self._select_states.get(key)
+        return state
 
     async def set_select_state(
         self, select_name: str, state: str, device_mac: MAC_ADDR | None = None
@@ -751,6 +892,7 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
         """Set state of the specified select."""
         api = self._select_api(device_mac)
 
+        # WLAN Filter Mode select
         if select_name == SELECT_WLAN_FILTER_MODE and await api.is_feature_available(
             FEATURE_WLAN_FILTER
         ):
@@ -760,6 +902,14 @@ class HuaweiControllerDataUpdateCoordinator(DataUpdateCoordinator):
                 await api.set_wlan_filter_mode(FilterMode.WHITELIST)
             else:
                 raise CoordinatorError(f"Unsupported HuaweiWlanFilterMode: {state}")
+
+        # Router's zone select
+        elif select_name == SELECT_ROUTER_ZONE:
+            await self._zones_map.set_zone_id(
+                device_mac or _PRIMARY_ROUTER_IDENTITY, state
+            )
+
+        # Unknown select
         else:
             raise CoordinatorError(f"Unsupported select name: {select_name}")
 

@@ -37,7 +37,8 @@
                     "wifi_access_switches": "Device Wi-Fi Access switches",
                     "router_clients_sensors": "Number of connected devices for each router",
                     "devices_tags": "Device tags",
-                    "device_tracker": "Devices tracking"
+                    "device_tracker": "Devices tracking",
+                    "device_tracker_zones": "Router-specific zones for tracked devices"
                 },
                 "title": "Huawei mesh router setup (2\/2)",
                 "description": "Additional features"
