@@ -142,7 +142,7 @@ class HuaweiFeaturesDetector:
     @log_feature(FEATURE_WLAN_FILTER)
     @unauthorized_as_false
     async def _is_wlan_filter_available(self) -> bool:
-        data = self._core_api.get(_URL_WLAN_FILTER)
+        data = await self._core_api.get(_URL_WLAN_FILTER)
         return data is not None
 
     async def update(self) -> None:
