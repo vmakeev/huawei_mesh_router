@@ -2,7 +2,7 @@
 
 The component allows you to track all devices connected to your mesh network.
 
-This feature can be disabled in [advanced options](../README.md#advanced-options).
+This feature is disabled by default and can be enabled in [advanced options](../README.md#advanced-options).
 
 Each tracked device exposes the following attributes:
 

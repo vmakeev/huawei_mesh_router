@@ -8,7 +8,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
-![Maintained](https://img.shields.io/maintenance/yes/2022)
+![Maintained](https://img.shields.io/maintenance/yes/2023)
 
 ## Key features
 
@@ -73,10 +73,10 @@ Advanced settings include:
 |------------------------------------------------------------------------------------------------------------------|------------|
 | Update interval                                                                                                  | 30 seconds |
 | Enabling or disabling [Device Wi-Fi Access switches](docs/controls.md#device-wi-fi-access)                       |  Disabled  |
-| Enabling or disabling [Number of connected devices for each router](docs/sensors.md#number-of-connected-devices) |  Enabled   |
+| Enabling or disabling [Number of connected devices for each router](docs/sensors.md#number-of-connected-devices) |  Disabled  |
 | Enabling or disabling [Device tags](docs/device-tags.md#device-tags)                                             |  Disabled  |
-| Enabling or disabling [Devices tracking](docs/device-tracking.md#devices-tracking)                               |  Enabled   |
-| Enabling or disabling [Router-specific zones](docs/device-tracking.md#router-specific-zones)                     |  Disabled   |
+| Enabling or disabling [Devices tracking](docs/device-tracking.md#devices-tracking)                               |  Disabled  |
+| Enabling or disabling [Router-specific zones](docs/device-tracking.md#router-specific-zones)                     |  Disabled  |
 
 
 ![Options 1/2](docs/images/options_1.png)
@@ -108,7 +108,6 @@ You can attach one or more tags to each client device in order to be able to use
 * Wi-Fi 802.11r switch ([read more](docs/controls.md#wi-fi-80211r-switch))
 * Wi-Fi TWT switch ([read more](docs/controls.md#wi-fi-6-twt-switch))
 * Wi-Fi Access Control ([read more](docs/controls.md#wi-fi-access-control))
-* Reboot router ([read more](docs/controls.md#reboot))
 * Device Wi-Fi Access ([read more](docs/controls.md#device-wi-fi-access))
 
 ### Selects
