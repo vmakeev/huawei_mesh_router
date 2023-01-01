@@ -31,7 +31,7 @@ Also, one sensor is created for each additional router in the mesh network: **\*
 
 ![Clients sensor](images/sensor_clients.png)
 
-**\*** These sensors will not be added if individual client sensors are disabled in [advanced options](../README.md#advanced-options).
+**\*** These sensors will not be added if individual client sensors are not enabled in [advanced options](../README.md#advanced-options).
 
 _Note: Sensors for additional routers are located in their own devices._
 
