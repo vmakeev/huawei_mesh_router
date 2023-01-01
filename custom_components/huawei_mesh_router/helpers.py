@@ -1,7 +1,6 @@
 """Helpful common functions."""
 
 from datetime import datetime, timedelta
-from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -9,7 +8,7 @@ from homeassistant.helpers.entity import generate_entity_id as hass_generate_id
 import homeassistant.util.dt as dt
 
 from .client.classes import MAC_ADDR
-from .const import DATA_KEY_COORDINATOR, DOMAIN
+from .const import DATA_KEY_COORDINATOR, DATA_KEY_PLATFORMS, DOMAIN
 from .update_coordinator import HuaweiDataUpdateCoordinator
 
 
@@ -63,6 +62,33 @@ def set_coordinator(
     hass.data.setdefault(DOMAIN, {}).setdefault(config_entry.entry_id, {})[
         DATA_KEY_COORDINATOR
     ] = coordinator
+
+
+# ---------------------------
+#   set_loaded_platforms
+# ---------------------------
+def set_loaded_platforms(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    platforms: list[str],
+) -> None:
+    hass.data.setdefault(DOMAIN, {}).setdefault(config_entry.entry_id, {})[
+        DATA_KEY_PLATFORMS
+    ] = platforms
+
+
+# ---------------------------
+#   get_loaded_platforms
+# ---------------------------
+def get_loaded_platforms(hass: HomeAssistant, config_entry: ConfigEntry) -> list[str]:
+    result = (
+        hass.data.get(DOMAIN, {}).get(config_entry.entry_id, {}).get(DATA_KEY_PLATFORMS)
+    )
+    if not result:
+        raise ConfigurationError(
+            f"Loaded plaforms not found at {config_entry.entry_id}"
+        )
+    return result
 
 
 # ---------------------------

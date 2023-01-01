@@ -9,6 +9,7 @@ DOMAIN: Final = "huawei_mesh_router"
 STORAGE_VERSION: Final = 1
 
 DATA_KEY_COORDINATOR: Final = "coordinator"
+DATA_KEY_PLATFORMS: Final = "platforms"
 DATA_KEY_SERVICES: Final = "services_count"
 
 OPT_WIFI_ACCESS_SWITCHES = "wifi_access_switches"

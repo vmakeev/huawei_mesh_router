@@ -22,7 +22,12 @@ from .const import (
     PLATFORMS,
     STORAGE_VERSION,
 )
-from .helpers import pop_coordinator, set_coordinator
+from .helpers import (
+    get_loaded_platforms,
+    pop_coordinator,
+    set_coordinator,
+    set_loaded_platforms,
+)
 from .options import HuaweiIntegrationOptions
 from .services import async_setup_services, async_unload_services
 from .update_coordinator import HuaweiDataUpdateCoordinator
@@ -83,9 +88,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     set_coordinator(hass, config_entry, coordinator)
 
-    hass.config_entries.async_setup_platforms(
-        config_entry, _get_platforms(integration_options)
-    )
+    loaded_platforms = list(_get_platforms(integration_options))
+    set_loaded_platforms(hass, config_entry, loaded_platforms)
+    hass.config_entries.async_setup_platforms(config_entry, loaded_platforms)
 
     await async_setup_services(hass, config_entry)
     return True
@@ -113,7 +118,7 @@ async def async_update_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(
-        config_entry, _get_platforms(HuaweiIntegrationOptions(config_entry))
+        config_entry, get_loaded_platforms(hass, config_entry)
     )
     if unload_ok:
         coordinator = pop_coordinator(hass, config_entry)
