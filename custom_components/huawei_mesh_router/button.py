@@ -144,7 +144,7 @@ class HuaweiRebootButton(HuaweiButton):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_REBOOT,
-            device.name if device else coordinator.primary_router_name,
+            device.name if device else None,
         )
 
         self._attr_unique_id = generate_entity_unique_id(

@@ -1,6 +1,6 @@
 """Support for additional sensors."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 import logging
 from typing import Callable, Final
@@ -57,10 +57,7 @@ class HuaweiSensorEntityDescription(SensorEntityDescription):
     function_uid: str | None = None
     device_mac: MAC_ADDR | None = None
     device_name: str | None = None
-    name: str | None = field(init=False)
-
-    def __post_init__(self):
-        self.name = generate_entity_name(self.function_name, self.device_name)
+    name: str | None = None
 
 
 # ---------------------------
@@ -107,8 +104,11 @@ async def async_setup_entry(
             HuaweiUptimeSensorEntityDescription(
                 key="uptime",
                 icon="mdi:timer-outline",
+                name=generate_entity_name(
+                    _FUNCTION_DISPLAYED_NAME_UPTIME, coordinator.primary_router_name
+                ),
                 device_mac=None,
-                device_name=coordinator.primary_router_name,
+                device_name=None,
                 function_uid=_FUNCTION_UID_UPTIME,
                 function_name=_FUNCTION_DISPLAYED_NAME_UPTIME,
             ),
@@ -118,8 +118,12 @@ async def async_setup_entry(
             HuaweiClientsSensorEntityDescription(
                 key="total",
                 icon="mdi:account-multiple",
+                name=generate_entity_name(
+                    _FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS,
+                    coordinator.primary_router_name,
+                ),
                 device_mac=None,
-                device_name=coordinator.primary_router_name,
+                device_name=None,
                 function_uid=_FUNCTION_UID_TOTAL_CLIENTS,
                 function_name=_FUNCTION_DISPLAYED_NAME_TOTAL_CLIENTS,
             ),
@@ -135,8 +139,12 @@ async def async_setup_entry(
                 HuaweiClientsSensorEntityDescription(
                     key="primary",
                     icon="mdi:router-wireless",
+                    name=generate_entity_name(
+                        _FUNCTION_DISPLAYED_NAME_CLIENTS,
+                        coordinator.primary_router_name,
+                    ),
                     device_mac=None,
-                    device_name=coordinator.primary_router_name,
+                    device_name=None,
                     function_uid=_FUNCTION_UID_CLIENTS,
                     function_name=_FUNCTION_DISPLAYED_NAME_CLIENTS,
                 ),
@@ -177,6 +185,10 @@ def watch_for_additional_routers(
             description = HuaweiClientsSensorEntityDescription(
                 key=mac,
                 icon="mdi:router-wireless",
+                name=generate_entity_name(
+                    _FUNCTION_DISPLAYED_NAME_CLIENTS,
+                    router.name,
+                ),
                 device_mac=mac,
                 device_name=router.name,
                 function_uid=_FUNCTION_UID_CLIENTS,
@@ -196,6 +208,10 @@ def watch_for_additional_routers(
             description = HuaweiUptimeSensorEntityDescription(
                 key="uptime",
                 icon="mdi:timer-outline",
+                name=generate_entity_name(
+                    _FUNCTION_DISPLAYED_NAME_UPTIME,
+                    router.name,
+                ),
                 device_mac=mac,
                 device_name=router.name,
                 function_uid=_FUNCTION_UID_UPTIME,

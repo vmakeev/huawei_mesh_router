@@ -1,6 +1,6 @@
 """Support for binary sensors."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import logging
 from typing import Final
 
@@ -44,10 +44,7 @@ class HuaweiBinarySensorEntityDescription(BinarySensorEntityDescription):
     function_uid: str | None = None
     device_mac: MAC_ADDR | None = None
     device_name: str | None = None
-    name: str | None = field(init=False)
-
-    def __post_init__(self):
-        self.name = generate_entity_name(self.function_name, self.device_name)
+    name: str | None = None
 
 
 # ---------------------------
@@ -81,8 +78,11 @@ async def async_setup_entry(
             HuaweiWanSensorEntityDescription(
                 key="wan",
                 icon="mdi:web",
+                name=generate_entity_name(
+                    _FUNCTION_DISPLAYED_NAME_WAN, coordinator.primary_router_name
+                ),
                 device_mac=None,
-                device_name=coordinator.primary_router_name,
+                device_name=None,
                 function_uid=_FUNCTION_UID_WAN,
                 function_name=_FUNCTION_DISPLAYED_NAME_WAN,
             ),

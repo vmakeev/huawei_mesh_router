@@ -112,9 +112,13 @@ def generate_entity_id(
     coordinator: HuaweiDataUpdateCoordinator,
     entity_domain: str,
     function_displayed_name: str,
-    device_name: str,
+    device_name: str | None = None,
 ) -> str:
-    preferred_id = f"{coordinator.name} {function_displayed_name} {device_name}"
+    preferred_id = (
+        f"{coordinator.name} {function_displayed_name} {device_name}"
+        if device_name
+        else f"{coordinator.name} {function_displayed_name}"
+    )
     return hass_generate_id(entity_domain + ".{}", preferred_id, hass=coordinator.hass)
 
 
