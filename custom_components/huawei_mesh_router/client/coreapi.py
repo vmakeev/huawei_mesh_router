@@ -420,6 +420,7 @@ class HuaweiCoreApi:
 
         if not check_authorized(response, result):
             self._logger.debug("GET seems unauthorized, trying to re-authenticate")
+            await self._try_logout()
             await self.authenticate()
             response = await self._get_raw(path)
             result = await _get_response_json(response)
@@ -454,6 +455,7 @@ class HuaweiCoreApi:
 
         if not check_authorized(response, result):
             self._logger.debug("POST seems unauthorized, trying to re-authenticate")
+            await self._try_logout()
             await self.authenticate()
 
             dto = {"csrf": self._active_csrf, "data": payload}

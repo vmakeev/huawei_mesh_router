@@ -216,7 +216,6 @@ class HuaweiWlanFilterModeSelect(HuaweiSelect):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WLAN_FILTER_MODE,
-            coordinator.primary_router_name,
         )
         self._attr_icon = "mdi:account-cancel"
         self._attr_entity_registry_enabled_default = False
@@ -247,10 +246,9 @@ class HuaweiRouterZoneSelect(HuaweiMappedSelect):
             coordinator, SELECT_ROUTER_ZONE, device.mac if device else None
         )
 
-        device_name = device.name if device else coordinator.primary_router_name
-
         self._attr_name = generate_entity_name(
-            _FUNCTION_DISPLAYED_NAME_ZONE, device_name
+            _FUNCTION_DISPLAYED_NAME_ZONE,
+            device.name if device else coordinator.primary_router_name,
         )
         self._attr_unique_id = generate_entity_unique_id(
             coordinator, _FUNCTION_UID_ZONE, self._device_mac
@@ -259,7 +257,7 @@ class HuaweiRouterZoneSelect(HuaweiMappedSelect):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_ZONE,
-            device_name,
+            device.name if device else None,
         )
         self._attr_icon = "mdi:map-marker-radius"
 

@@ -31,14 +31,16 @@ FEATURE_NFC: Final = "feature_nfc"
 FEATURE_WIFI_80211R: Final = "feature_wifi_80211r"
 FEATURE_WIFI_TWT: Final = "feature_wifi_twt"
 FEATURE_WLAN_FILTER: Final = "feature_wlan_filter"
+FEATURE_DEVICE_TOPOLOGY: Final = "feature_device_topology"
 
 _URL_DEVICE_INFO: Final = "api/system/deviceinfo"
-_URL_HOST_INFO: Final = "api/system/HostInfo"
 _URL_DEVICE_TOPOLOGY: Final = "api/device/topology"
+_URL_HOST_INFO: Final = "api/system/HostInfo"
 _URL_SWITCH_NFC: Final = "api/bsp/nfc_switch"
 _URL_SWITCH_WIFI_80211R: Final = "api/ntwk/WlanGuideBasic?type=notshowpassall"
 _URL_SWITCH_WIFI_TWT: Final = "api/ntwk/WlanGuideBasic?type=notshowpassall"
 _URL_REBOOT: Final = "api/service/reboot.cgi"
+_URL_REPEATER_INFO: Final = "api/ntwk/repeaterinfo"
 _URL_WANDETECT: Final = "api/ntwk/wandetect"
 _URL_WLAN_FILTER: Final = "api/ntwk/wlanfilterenhance"
 
@@ -145,6 +147,12 @@ class HuaweiFeaturesDetector:
         data = await self._core_api.get(_URL_WLAN_FILTER)
         return data is not None
 
+    @log_feature(FEATURE_DEVICE_TOPOLOGY)
+    @unauthorized_as_false
+    async def _is_device_topology_available(self) -> bool:
+        data = await self._core_api.get(_URL_DEVICE_TOPOLOGY)
+        return data is not None
+
     async def update(self) -> None:
         """Update the available features list."""
         if await self._is_nfc_available():
@@ -158,6 +166,9 @@ class HuaweiFeaturesDetector:
 
         if await self._is_wlan_filter_available():
             self._available_features.add(FEATURE_WLAN_FILTER)
+
+        if await self._is_device_topology_available():
+            self._available_features.add(FEATURE_DEVICE_TOPOLOGY)
 
     def is_available(self, feature: str) -> bool:
         """Return true if feature is available."""
@@ -639,3 +650,13 @@ class HuaweiApi:
 
         else:
             raise InvalidActionError(f"Unknown FilterAction: {filter_action}")
+
+    async def get_is_repeater(self) -> bool:
+        data = await self._core_api.get(_URL_REPEATER_INFO)
+
+        if data is None:
+            return False
+
+        repeater_enable = data.get("RepeaterEnable", False)
+
+        return isinstance(repeater_enable, bool) and repeater_enable

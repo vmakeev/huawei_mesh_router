@@ -283,7 +283,7 @@ class HuaweiNfcSwitch(HuaweiSwitch):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_NFC,
-            device.name if device else coordinator.primary_router_name,
+            device.name if device else None,
         )
         self._attr_icon = "mdi:nfc"
 
@@ -306,7 +306,6 @@ class HuaweiWifi80211RSwitch(HuaweiSwitch):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WIFI_802_11_R,
-            coordinator.primary_router_name,
         )
         self._attr_icon = "mdi:wifi-settings"
 
@@ -329,7 +328,6 @@ class HuaweiWifiTWTSwitch(HuaweiSwitch):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WIFI_TWT,
-            coordinator.primary_router_name,
         )
         self._attr_icon = "mdi:wifi-settings"
 
@@ -352,7 +350,6 @@ class HuaweiWlanFilterSwitch(HuaweiSwitch):
             coordinator,
             ENTITY_DOMAIN,
             _FUNCTION_DISPLAYED_NAME_WLAN_FILTER,
-            coordinator.primary_router_name,
         )
         self._attr_icon = "mdi:access-point-check"
         self._attr_entity_registry_enabled_default = False
