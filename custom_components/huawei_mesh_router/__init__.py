@@ -90,7 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     loaded_platforms = list(_get_platforms(integration_options))
     set_loaded_platforms(hass, config_entry, loaded_platforms)
-    hass.config_entries.async_setup_platforms(config_entry, loaded_platforms)
+    await hass.config_entries.async_forward_entry_setups(config_entry, loaded_platforms)
 
     await async_setup_services(hass, config_entry)
     return True
