@@ -68,7 +68,7 @@ class HuaweiUptimeSensorEntityDescription(HuaweiSensorEntityDescription):
     """A class that describes sensor entities."""
 
     native_unit_of_measurement: str | None = None
-    state_class: SensorStateClass | str | None = SensorStateClass.MEASUREMENT
+    state_class: SensorStateClass | str | None = None
     entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC
     device_class: str | None = SensorDeviceClass.TIMESTAMP
 
