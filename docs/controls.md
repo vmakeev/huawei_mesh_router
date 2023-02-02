@@ -24,7 +24,7 @@ The primary router has more controls than the additional ones.
 Allows you to reboot the selected router.
 
 There is one button that is always present:
-* `button.<integration_name>_reboot_primary_router`
+* `button.<integration_name>_reboot`
 
 Also, one button is created for each additional router in the mesh network:
 * `button.<integration_name>_reboot_<router_name>`
@@ -40,7 +40,7 @@ Allows you to manage the [OneHop connect](https://consumer.huawei.com/ph/support
 The switches will not be added to Home Assistant if the router does not support NFC.
 
 Primary router have the following switch:
-* `switch.<integration_name>_nfc_primary_router`
+* `switch.<integration_name>_nfc`
 
 Also, one switch is created for each supported additional router in the mesh network:
 * `switch.<integration_name>_nfc_<router_name>`

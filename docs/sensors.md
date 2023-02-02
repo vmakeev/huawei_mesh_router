@@ -21,8 +21,8 @@ The primary router has more sensors than the additional ones.
 The component provides the ability to obtain the number of connected devices both to the entire mesh network and to specific routers using sensors.
 
 There are two sensors for Primary router:
-* `sensor.<integration_name>_clients_primary_router` - number of devices connected to the primary router **\***
-* `sensor.<integration_name>_total_clients_primary_router` - total number of devices connected to the mesh network
+* `sensor.<integration_name>_clients` - number of devices connected to the primary router **\***
+* `sensor.<integration_name>_total_clients` - total number of devices connected to the mesh network
 
 ![Clients sensor](images/sensor_total_clients.png)
 
@@ -54,7 +54,7 @@ The component allows you to get the uptime of each router in your mesh network.
 The sensor value is the date and time when the router was last turned on.
 
 There is one sensor that is always present:
-* `sensor.<integration_name>_uptime_primary_router`
+* `sensor.<integration_name>_uptime`
 
 Also, one sensor is created for each additional router in the mesh network:
 * `sensor.<integration_name>_uptime_<router_name>`
@@ -75,7 +75,7 @@ The component is able to track information about the connection of the router to
 The sensor is in the "on" state if the Internet connection is established.
 
 There is one sensor that is always present:
-* `binary_sensor.<integration_name>_internet_connection_primary_router`
+* `binary_sensor.<integration_name>_internet_connection`
 
 ![Internet connection sensor](images/sensor_internet_connection.png)
 
