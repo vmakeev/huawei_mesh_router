@@ -128,6 +128,26 @@ def handle_auth_exception(func):
 
 
 # ---------------------------
+#   retry_on_csrf_error
+# ---------------------------
+def retry_on_csrf_error(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        api = args[0]
+        logger = api._logger
+        try:
+            return await func(*args, **kwargs)
+        except ApiCallError as ex:
+            if ex.category == APICALL_ERRCAT_CSRF:
+                logger.debug("CSRF error detected, retry")
+                if await api._init_csrf():
+                    return await func(*args, **kwargs)
+            raise
+
+    return wrapper
+
+
+# ---------------------------
 #   lock_external_call
 # ---------------------------
 def lock_external_call(func):
@@ -210,8 +230,11 @@ class HuaweiCoreApi:
         """Return router's configuration url."""
         return self._get_url("html/index.html")
 
-    def _handle_error_dict(self, data: Dict) -> None:
+    def _handle_error_dict(self, data: Dict | None) -> None:
         """handle dict with errors"""
+        if data is None:
+            return
+
         if "err" in data and data["err"] != 0:
             error_code = data["err"]
             error_category = data.get("errorCategory", "unknown")
@@ -249,9 +272,9 @@ class HuaweiCoreApi:
             "Csrf updated: param is '%s', token is '%s'", csrf_param, csrf_token
         )
 
-    def _handle_csrf_dict(self, data: Dict) -> None:
+    def _handle_csrf_dict(self, data: Dict | None) -> None:
         """Process the response dict and update csrf parameters if they exist in the response."""
-        if "csrf_param" in data and "csrf_token" in data:
+        if data is not None and "csrf_param" in data and "csrf_token" in data:
             self._update_csrf(data["csrf_param"], data["csrf_token"])
         else:
             self._logger.debug("No csrf data found in the response")
@@ -322,24 +345,12 @@ class HuaweiCoreApi:
         self._logger.debug("Authentication started")
         self._refresh_session()
         self._logger.debug("Getting index")
-        response = await self._get_raw("html/index.html#/login")
 
-        if response.status != 200:
-            self._logger.debug(
-                "Authentication failed: can not get index, status is %s",
-                response.status,
+        if not await self._init_csrf():
+            raise AuthenticationError(
+                "Failed to get initial CSRF", AUTH_FAILURE_GENERAL
             )
-            raise AuthenticationError("Failed to get index", AUTH_FAILURE_GENERAL)
 
-        result = await _get_response_text(response)
-
-        csrf_param = re.search(
-            '<meta name="csrf_param" content="(.+)"/>', result
-        ).group(1)
-        csrf_token = re.search(
-            '<meta name="csrf_token" content="(.+)"/>', result
-        ).group(1)
-        self._update_csrf(csrf_param, csrf_token)
         self._check_has_cookies(self._session.cookie_jar, URL(self._base_url))
 
         first_nonce = generate_nonce()
@@ -394,18 +405,45 @@ class HuaweiCoreApi:
         self._handle_error_dict(result)
         self._logger.debug("Authentication success")
 
+    async def _init_csrf(self) -> bool:
+        response = await self._get_raw("html/index.html#/login")
+        if response.status != 200:
+            self._logger.debug(
+                "Can not get index, status is %s",
+                response.status,
+            )
+            return False
+        result = await _get_response_text(response)
+        csrf_param = re.search(
+            '<meta name="csrf_param" content="(.+)"/>', result
+        ).group(1)
+        csrf_token = re.search(
+            '<meta name="csrf_token" content="(.+)"/>', result
+        ).group(1)
+        self._update_csrf(csrf_param, csrf_token)
+        return True
+
+    @retry_on_csrf_error
     async def _try_logout(self):
         """Try logout from the api"""
         try:
             response = await self._post_raw(
                 "api/system/user_logout", {"csrf": self._active_csrf}
             )
+
+            if response.status != 200:
+                self._logger.debug(
+                    "Can not perform logout: status is %s", response.status
+                )
+                return
+
             result = await _get_response_json(response)
             self._handle_csrf_dict(result)
             self._handle_error_dict(result)
         except Exception as ex:
             self._logger.debug("Error during logout: %s", repr(ex))
 
+    @retry_on_csrf_error
     @lock_external_call
     async def get(self, path: str, **kwargs: Any) -> Dict:
         """Perform GET request to the relative address."""
@@ -436,6 +474,7 @@ class HuaweiCoreApi:
         self._handle_error_dict(result)
         return result
 
+    @retry_on_csrf_error
     @lock_external_call
     async def post(self, path: str, payload: Dict, **kwargs: Any) -> Dict:
         """Perform POST request to the relative address with the specified body."""
@@ -452,6 +491,9 @@ class HuaweiCoreApi:
 
         response = await self._post_raw(path, dto)
         result = await _get_response_json(response)
+
+        self._handle_csrf_dict(result)
+        self._handle_error_dict(result)
 
         if not check_authorized(response, result):
             self._logger.debug("POST seems unauthorized, trying to re-authenticate")
@@ -472,8 +514,8 @@ class HuaweiCoreApi:
                     APICALL_ERRCAT_UNAUTHORIZED,
                 )
 
-        self._handle_csrf_dict(result)
-        self._handle_error_dict(result)
+            self._handle_csrf_dict(result)
+            self._handle_error_dict(result)
 
         return result
 
