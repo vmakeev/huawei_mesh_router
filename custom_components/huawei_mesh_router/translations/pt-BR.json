@@ -1,0 +1,48 @@
+{
+    "config": {
+        "title": "Roteadores mesh Huawei",
+        "step": {
+            "user": {
+                "description": "Configurações dos roteadore mesh Huawei.",
+                "data": {
+                    "name": "Nome da integração",
+                    "host": "Host",
+                    "port": "Porta",
+                    "username": "Nome de usuário",
+                    "password": "Senha",
+                    "ssl": "Usar SSL",
+                    "verify_ssl": "Verificar certificado SSL"
+                }
+            }
+        },
+        "error": {
+            "name_exists": "O nome já usado.",
+            "auth_general": "Não é possível autenticar.",
+            "auth_invalid_csrf": "Erro CSRF, tente novamente.",
+            "auth_too_many_users": "Muitos usuários, aguarde algum tempo antes de tentar novamente.",
+            "auth_invalid_credentials": "Nome de usuário ou senha inválidos."
+        }
+    },
+    "options": {
+        "step": {
+            "basic_options": {
+                "data": {
+                    "scan_interval": "Intervalo de atualização"
+                },
+                "title": "Configurações dos roteadores mesh Huawei (1\/2)",
+                "description": "Opções básicas"
+            },
+            "features_select": {
+                "data": {
+                    "wifi_access_switches": "Interruptores de acesso Wi-Fi do dispositivo",
+                    "router_clients_sensors": "Número de dispositivos conectados para cada roteador",
+                    "devices_tags": "Tags do dispositivo",
+                    "device_tracker": "Rastreamento de dispositivos",
+                    "device_tracker_zones": "Zonas específicas do roteador para dispositivos rastreados"
+                },
+                "title": "Configurações dos roteadores mesh Huawei (2\/2)",
+                "description": "Características adicionais"
+            }
+        }
+    }
+}
