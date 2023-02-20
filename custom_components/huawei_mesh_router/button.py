@@ -51,7 +51,7 @@ async def async_setup_entry(
 def _watch_for_additional_routers(
     coordinator, config_entry, async_add_entities
 ) -> None:
-    watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
+    watcher: ActiveRoutersWatcher = ActiveRoutersWatcher(coordinator)
     known_buttons: dict[MAC_ADDR, HuaweiButton] = {}
 
     @callback
@@ -65,7 +65,7 @@ def _watch_for_additional_routers(
     @callback
     def coordinator_updated() -> None:
         """Update the status of the device."""
-        watcher.look_for_changes(coordinator, on_router_added)
+        watcher.look_for_changes(on_router_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
     coordinator_updated()

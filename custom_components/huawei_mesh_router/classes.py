@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Tuple
 
 from homeassistant.backports.enum import StrEnum
 
-from .client.classes import MAC_ADDR
+from .client.classes import MAC_ADDR, HuaweiFilterItem
 
 DEVICE_TAG = str
 
@@ -34,6 +34,60 @@ class HuaweiInterfaceType(StrEnum):
 class HuaweiWlanFilterMode(StrEnum):
     BLACKLIST = "Blacklist"
     WHITELIST = "Whitelist"
+
+
+# ---------------------------
+#   UrlFilter
+# ---------------------------
+class UrlFilter:
+    def __init__(
+        self,
+        filter_id: str,
+        url: str,
+        enabled: bool,
+        dev_manual: bool,
+        devices: Iterable[HuaweiFilterItem],
+    ) -> None:
+        self._filter_id = filter_id
+        self._url = url
+        self._dev_manual = dev_manual
+        self._devices = list(devices)
+        self._enabled = enabled
+
+    def update_info(
+        self,
+        url: str,
+        enabled: bool,
+        dev_manual: bool,
+        devices: Iterable[HuaweiFilterItem],
+    ) -> None:
+        self._url = url
+        self._dev_manual = dev_manual
+        self._devices = list(devices)
+        self._enabled = enabled
+
+    def set_enabled(self, enabled: bool) -> None:
+        self._enabled = enabled
+
+    @property
+    def filter_id(self) -> str:
+        return self._filter_id
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def dev_manual(self) -> bool:
+        return self._dev_manual
+
+    @property
+    def devices(self) -> Iterable[HuaweiFilterItem]:
+        return self._devices
 
 
 # ---------------------------

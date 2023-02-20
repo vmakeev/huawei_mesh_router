@@ -1,10 +1,11 @@
 """Huawei Controller for Huawei Router."""
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from datetime import timedelta
 from functools import wraps
 import logging
-from typing import Any, Callable, Final, Iterable, Tuple
+from typing import Any, Callable, Final, Generic, Iterable, Tuple, TypeVar
 
 from homeassistant.components.zone.const import DOMAIN as ZONE_DOMAIN
 from homeassistant.config_entries import ConfigEntry
@@ -29,6 +30,7 @@ from .classes import (
     ConnectedDevice,
     HuaweiInterfaceType,
     HuaweiWlanFilterMode,
+    UrlFilter,
     ZoneInfo,
 )
 from .client.classes import (
@@ -41,15 +43,18 @@ from .client.classes import (
     HuaweiDeviceNode,
     HuaweiFilterInfo,
     HuaweiRouterInfo,
+    HuaweiUrlFilterInfo,
 )
 from .client.huaweiapi import (
     CONNECTED_VIA_ID_PRIMARY,
     FEATURE_DEVICE_TOPOLOGY,
     FEATURE_NFC,
+    FEATURE_URL_FILTER,
     FEATURE_WIFI_80211R,
     FEATURE_WIFI_TWT,
     FEATURE_WLAN_FILTER,
     SWITCH_NFC,
+    SWITCH_URL_FILTER,
     SWITCH_WIFI_80211R,
     SWITCH_WIFI_TWT,
     SWITCH_WLAN_FILTER,
@@ -64,6 +69,9 @@ SELECT_WLAN_FILTER_MODE: Final = "wlan_filter_mode_select"
 SELECT_ROUTER_ZONE: Final = "router_zone_select"
 SWITCH_DEVICE_ACCESS: Final = "wlan_device_access_switch"
 
+_TKey = TypeVar("_TKey")
+_TItem = TypeVar("_TItem")
+
 
 class CoordinatorError(Exception):
     def __init__(self, message: str) -> None:
@@ -77,65 +85,129 @@ class CoordinatorError(Exception):
 
 
 # ---------------------------
-#   HuaweiConnectedDevicesWatcher
+#   HuaweiChangesWatcher
 # ---------------------------
-class HuaweiConnectedDevicesWatcher:
-    def __init__(self, devices_predicate: Callable[[ConnectedDevice], bool]) -> None:
+class HuaweiChangesWatcher(Generic[_TKey, _TItem], ABC):
+    def __init__(self, predicate: Callable[[_TItem], bool]) -> None:
         """Initialize."""
-        self._known_devices: dict[MAC_ADDR, ConnectedDevice] = {}
-        self._devices_predicate = devices_predicate
+        self._known_items: dict[_TKey, _TItem] = {}
+        self._predicate = predicate
+
+    @abstractmethod
+    def _get_key(self, item: _TItem) -> _TKey:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _get_actual_items(self) -> Iterable[_TItem]:
+        raise NotImplementedError()
 
     def _get_difference(
-        self, coordinator: HuaweiDataUpdateCoordinator
+        self, hass: HomeAssistant
     ) -> Tuple[
-        Iterable[Tuple[MAC_ADDR, ConnectedDevice]],
-        Iterable[Tuple[EntityRegistry, MAC_ADDR, ConnectedDevice]],
+        Iterable[Tuple[_TKey, _TItem]],
+        Iterable[Tuple[EntityRegistry, _TKey, _TItem]],
     ]:
-        """Return the difference between previously known and current lists of devices."""
-        actual_devices: dict[MAC_ADDR, ConnectedDevice] = {}
-        for device in coordinator.connected_devices.values():
-            if self._devices_predicate(device):
-                actual_devices[device.mac] = device
+        """Return the difference between previously known and current lists of items."""
+        actual_items: dict[_TKey, _TItem] = {}
 
-        added: list[Tuple[MAC_ADDR, ConnectedDevice]] = []
-        removed: list[Tuple[EntityRegistry, MAC_ADDR, ConnectedDevice]] = []
+        for item in self._get_actual_items():
+            if self._predicate(item):
+                actual_items[self._get_key(item)] = item
 
-        for device_mac, device in actual_devices.items():
-            if device_mac in self._known_devices:
+        added: list[Tuple[_TKey, _TItem]] = []
+        removed: list[Tuple[EntityRegistry, _TKey, _TItem]] = []
+
+        for key, item in actual_items.items():
+            if key in self._known_items:
                 continue
-            self._known_devices[device_mac] = device
-            added.append((device_mac, device))
+            self._known_items[key] = item
+            added.append((key, item))
 
-        unavailable_devices = {}
-        for device_mac, existing_device in self._known_devices.items():
-            if device_mac not in actual_devices:
-                unavailable_devices[device_mac] = existing_device
+        missing_items = {}
+        for key, item in self._known_items.items():
+            if key not in actual_items:
+                missing_items[key] = item
 
-        if unavailable_devices:
-            er = entity_registry.async_get(coordinator.hass)
-            for device_mac, unavailable_device in unavailable_devices.items():
-                self._known_devices.pop(device_mac, None)
-                removed.append((er, device_mac, unavailable_device))
+        if missing_items:
+            er = entity_registry.async_get(hass)
+            for key, missing_item in missing_items.items():
+                self._known_items.pop(key, None)
+                removed.append((er, key, missing_item))
 
         return added, removed
 
-    def look_for_changes(
+
+# ---------------------------
+#   HuaweiUrlFiltersWatcher
+# ---------------------------
+class HuaweiUrlFiltersWatcher(HuaweiChangesWatcher[str, UrlFilter]):
+    def _get_actual_items(self) -> Iterable[_TItem]:
+        return self._coordinator.url_filters.values()
+
+    def _get_key(self, item: _TItem) -> _TKey:
+        return item.filter_id
+
+    def __init__(
         self,
         coordinator: HuaweiDataUpdateCoordinator,
+        filters_predicate: Callable[[UrlFilter], bool],
+    ) -> None:
+        """Initialize."""
+        self._coordinator = coordinator
+        super().__init__(filters_predicate)
+
+    def look_for_changes(
+        self,
+        on_added: Callable[[str, UrlFilter], None] | None = None,
+        on_removed: Callable[[EntityRegistry, str, UrlFilter], None] | None = None,
+    ) -> None:
+        """Look for difference between previously known and current lists of items."""
+        added, removed = self._get_difference(self._coordinator.hass)
+
+        if on_added:
+            for key, item in added:
+                on_added(key, item)
+
+        if on_removed:
+            for er, key, item in removed:
+                on_removed(er, key, item)
+
+
+# ---------------------------
+#   HuaweiConnectedDevicesWatcher
+# ---------------------------
+class HuaweiConnectedDevicesWatcher(HuaweiChangesWatcher[MAC_ADDR, ConnectedDevice]):
+    def _get_actual_items(self) -> Iterable[_TItem]:
+        return self._coordinator.connected_devices.values()
+
+    def _get_key(self, item: _TItem) -> _TKey:
+        return item.mac
+
+    def __init__(
+        self,
+        coordinator: HuaweiDataUpdateCoordinator,
+        devices_predicate: Callable[[ConnectedDevice], bool],
+    ) -> None:
+        """Initialize."""
+        self._coordinator = coordinator
+        super().__init__(devices_predicate)
+
+    def look_for_changes(
+        self,
         on_added: Callable[[MAC_ADDR, ConnectedDevice], None] | None = None,
         on_removed: Callable[[EntityRegistry, MAC_ADDR, ConnectedDevice], None]
         | None = None,
     ) -> None:
-        """Look for difference between previously known and current lists of routers."""
-        added, removed = self._get_difference(coordinator)
+        """Look for difference between previously known and current lists of items."""
+        added, removed = self._get_difference(self._coordinator.hass)
 
         if on_added:
-            for mac, device in added:
-                on_added(mac, device)
+            for key, item in added:
+                on_added(key, item)
 
         if on_removed:
-            for er, mac, device in removed:
-                on_removed(er, mac, device)
+            for er, key, item in removed:
+                on_removed(er, key, item)
 
 
 # ---------------------------
@@ -146,9 +218,9 @@ class ActiveRoutersWatcher(HuaweiConnectedDevicesWatcher):
     def filter(device: ConnectedDevice) -> bool:
         return device.is_active and device.is_router
 
-    def __init__(self) -> None:
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
-        super().__init__(ActiveRoutersWatcher.filter)
+        super().__init__(coordinator, ActiveRoutersWatcher.filter)
 
 
 # ---------------------------
@@ -161,9 +233,9 @@ class ClientWirelessDevicesWatcher(HuaweiConnectedDevicesWatcher):
             return False
         return device.interface_type != HuaweiInterfaceType.INTERFACE_LAN
 
-    def __init__(self) -> None:
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
-        super().__init__(ClientWirelessDevicesWatcher.filter)
+        super().__init__(coordinator, ClientWirelessDevicesWatcher.filter)
 
 
 # ---------------------------
@@ -335,7 +407,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         self._wan_info: HuaweiConnectionInfo | None = None
 
         self._config: ConfigEntry = config_entry
-        self._routersWatcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
+        self._routersWatcher: ActiveRoutersWatcher = ActiveRoutersWatcher(self)
 
         self._apis: dict[MAC_ADDR, HuaweiApi] = {
             _PRIMARY_ROUTER_IDENTITY: HuaweiApi(
@@ -351,6 +423,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         self._switch_states: dict[str, bool] = {}
         self._select_states: dict[str, str] = {}
         self._wlan_filter_info: HuaweiFilterInfo | None = None
+        self._url_filters: dict[str, UrlFilter] = {}
 
         super().__init__(
             hass,
@@ -389,6 +462,11 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
     def connected_devices(self) -> dict[MAC_ADDR, ConnectedDevice]:
         """Return the connected devices."""
         return self._connected_devices
+
+    @property
+    def url_filters(self) -> dict[str, UrlFilter]:
+        """Return the connected devices."""
+        return self._url_filters
 
     @property
     def tags_map(self) -> TagsMap:
@@ -479,6 +557,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_apis()
         await self._update_router_infos()
         await self._update_wan_info()
+        await self._update_url_filter_info()
         await self._update_switches()
         await self._update_selects()
         self._logger.debug("Update completed")
@@ -509,7 +588,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
         self._zones = list(sorted(get_zones(), key=lambda zone: zone.name))
 
-        self._logger.debug("Zones updated: %s", self._zones)
+        self._logger.debug("Zones updated")
 
     @suppress_update_exception("Can not update wan info: %s")
     async def _update_wan_info(self) -> None:
@@ -583,7 +662,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 self._safe_disconnect(router_api)
 
         self._logger.debug("Updating apis")
-        self._routersWatcher.look_for_changes(self, on_router_added, on_router_removed)
+        self._routersWatcher.look_for_changes(on_router_added, on_router_removed)
 
     @suppress_update_exception("Can not update selects: %s")
     async def _update_selects(self) -> None:
@@ -637,6 +716,50 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         self._logger.debug("Selects states updated")
         self._select_states = new_states
 
+    @suppress_update_exception("Can not update URL filters: %s")
+    async def _update_url_filter_info(self) -> None:
+        """Asynchronous update of selects states."""
+        self._logger.debug("Updating URL filters")
+
+        primary_api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
+
+        if not await primary_api.is_feature_available(FEATURE_URL_FILTER):
+            return
+
+        url_filter_infos: dict[str, HuaweiUrlFilterInfo] = {
+            item.filter_id: item for item in await primary_api.get_url_filter_info()
+        }
+
+        missing_filter_ids: list[str] = []
+        for existing_filter in self._url_filters.values():
+            updated_filter_info = url_filter_infos.get(existing_filter.filter_id)
+            if not updated_filter_info:
+                missing_filter_ids.append(existing_filter.filter_id)
+                continue
+
+            existing_filter.update_info(
+                url=updated_filter_info.url,
+                dev_manual=updated_filter_info.dev_manual,
+                enabled=updated_filter_info.enabled,
+                devices=updated_filter_info.devices,
+            )
+
+        if missing_filter_ids:
+            for missing_id in missing_filter_ids:
+                del self._url_filters[missing_id]
+
+        for updated_filter_info in url_filter_infos.values():
+            if updated_filter_info.filter_id not in self._url_filters:
+                self._url_filters[updated_filter_info.filter_id] = UrlFilter(
+                    updated_filter_info.filter_id,
+                    updated_filter_info.url,
+                    updated_filter_info.enabled,
+                    updated_filter_info.dev_manual,
+                    updated_filter_info.devices,
+                )
+
+        self._logger.debug("URL filters updated")
+
     @suppress_update_exception("Can not update switches: %s")
     async def _update_switches(self) -> None:
         """Asynchronous update of switch states."""
@@ -675,6 +798,9 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
         if self._integration_options.wifi_access_switches:
             await self.calculate_device_access_switch_states(new_states)
+
+        if self._integration_options.url_filter_switches:
+            await self.calculate_url_filter_switch_states(new_states)
 
         self._switch_states = new_states
         self._logger.debug("Switches states updated")
@@ -716,6 +842,25 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 states[f"{SWITCH_DEVICE_ACCESS}_{device.mac}"] = state
                 self._logger.debug(
                     "Device access switch (%s) state updated to %s", device.name, state
+                )
+
+    async def calculate_url_filter_switch_states(
+        self, states: dict[str, bool] | None = None
+    ) -> None:
+        """Update url filter switch states."""
+        if not self._integration_options.url_filter_switches:
+            return
+
+        states = states or self._switch_states
+        primary_api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
+
+        if await primary_api.is_feature_available(FEATURE_URL_FILTER):
+            for item in self._url_filters.values():
+                states[f"{SWITCH_URL_FILTER}_{item.filter_id}"] = item.enabled
+                self._logger.debug(
+                    "URL filter switch (%s) state updated to %s",
+                    item.filter_id,
+                    item.enabled,
                 )
 
     @suppress_update_exception("Can not update connected devices: %s")
@@ -871,24 +1016,52 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         return await self._select_api(device_mac).is_feature_available(feature)
 
     def get_switch_state(
-        self, switch_name: str, device_mac: MAC_ADDR | None = None
+        self,
+        switch_name: str,
+        device_mac: MAC_ADDR | None = None,
+        switch_id: str | None = None,
     ) -> bool | None:
         """Return the state of the specified switch."""
-        key = switch_name if not device_mac else f"{switch_name}_{device_mac}"
+        key = switch_name
+        if switch_id:
+            key = f"{key}_{switch_id}"
+        if device_mac:
+            key = f"{key}_{device_mac}"
         return self._switch_states.get(key)
 
     async def set_switch_state(
-        self, switch_name: str, state: bool, device_mac: MAC_ADDR | None = None
+        self,
+        switch_name: str,
+        state: bool,
+        device_mac: MAC_ADDR | None = None,
+        switch_id: str | None = None,
     ) -> None:
         """Set state of the specified switch."""
 
         key = switch_name if not device_mac else f"{switch_name}_{device_mac}"
 
+        # Device access switch processing
         if switch_name == SWITCH_DEVICE_ACCESS:
             api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
             # add to whitelist when ON, add to blacklist otherwise
             filter_mode = FilterMode.WHITELIST if state else FilterMode.BLACKLIST
             await api.apply_wlan_filter(filter_mode, FilterAction.ADD, device_mac)
+
+        # URL filter switch processing
+        elif switch_name == SWITCH_URL_FILTER:
+            if not switch_id:
+                raise CoordinatorError(
+                    f"Can not set value: switch_id is required for {SWITCH_URL_FILTER}"
+                )
+            api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
+            filter_item = self._url_filters.get(switch_id)
+            if filter_item.enabled == state:
+                return
+            filter_item.set_enabled(state)
+            await api.apply_url_filter_info(filter_item)
+            key = f"{switch_name}_{switch_id}"
+
+        # other switches
         else:
             api = self._select_api(device_mac)
             await api.set_switch_state(switch_name, state)

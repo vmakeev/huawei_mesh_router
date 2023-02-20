@@ -86,6 +86,37 @@ The switch will be unavailable if [Wi-Fi Access Control](#wi-fi-access-control) 
 These switches will not be added to Home Assistant if the Primary router does not support [Wi-Fi Access Control](#wi-fi-access-control), or this feature is disabled in [advanced options](../README.md#advanced-options).
 
 _Note: these switches are not attached to a specific router device. Don't use this feature if you don't know what you are doing._
+_Note: this switch is not enabled by default. If you need to use this feature, please enable it manually. Don't use this feature if you don't know what you are doing._
+
+###  Website filtering
+
+Allows you to enable or disable access to specific websites.
+
+![Website filtering switch](images/switch_url_filter.png)
+
+One switch is created for each filter in the router:
+* `switch.<integration_name>_url_filter_<website_address>`
+
+Each switch exposes the following attributes:
+
+|   Attribute      |                     Description                      |
+|------------------|------------------------------------------------------|
+| `url`            | The address of the website to which access is denied |
+| `devices`        | List of devices to which the filtering applies*      |
+
+**\*** If the filtering is applied to all devices, it will contain the value `All`. In other cases, it will contain a list of MAC addresses of devices and their displayed names
+
+
+You can configure the filters themselves in the web interface of your router. 
+Example address: `http://192.168.3.1/html/index.html#/more/parentcontrol`
+
+![Website filtering setup](images/parental_control_websites.png)
+
+These switches will not be added to Home Assistant if the Primary router does not support website filtering, or this feature is disabled in [advanced options](../README.md#advanced-options).
+
+_Note: these switches are not attached to a specific router device._
+
+_Note: if the filter is removed in the Primary router, the corresponding switch will be removed from the Home Assistant._
 
 ## Selects
 

@@ -13,6 +13,7 @@ DATA_KEY_PLATFORMS: Final = "platforms"
 DATA_KEY_SERVICES: Final = "services_count"
 
 OPT_WIFI_ACCESS_SWITCHES = "wifi_access_switches"
+OPT_URL_FILTER_SWITCHES = "url_filter_switches"
 OPT_ROUTER_CLIENTS_SENSORS = "router_clients_sensors"
 OPT_DEVICES_TAGS = "devices_tags"
 OPT_DEVICE_TRACKER = "device_tracker"
@@ -31,6 +32,7 @@ DEFAULT_ROUTER_CLIENTS_SENSORS: Final = False
 DEFAULT_DEVICES_TAGS: Final = False
 DEFAULT_DEVICE_TRACKER: Final = False
 DEFAULT_DEVICE_TRACKER_ZONES: Final = False
+DEFAULT_URL_FILTER_SWITCHES: Final = False
 
 ATTR_MANUFACTURER: Final = "Huawei"
 PLATFORMS: Final = [

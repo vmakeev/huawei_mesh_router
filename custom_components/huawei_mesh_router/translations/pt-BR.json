@@ -38,7 +38,8 @@
                     "router_clients_sensors": "Número de dispositivos conectados para cada roteador",
                     "devices_tags": "Tags do dispositivo",
                     "device_tracker": "Rastreamento de dispositivos",
-                    "device_tracker_zones": "Zonas específicas do roteador para dispositivos rastreados"
+                    "device_tracker_zones": "Zonas específicas do roteador para dispositivos rastreados",
+                    "url_filter_switches": "Interruptores de filtragem de sites"
                 },
                 "title": "Configurações dos roteadores mesh Huawei (2\/2)",
                 "description": "Características adicionais"

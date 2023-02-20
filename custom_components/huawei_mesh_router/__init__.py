@@ -13,11 +13,13 @@ from .client.huaweiapi import HuaweiApi
 from .const import (
     DEFAULT_DEVICE_TRACKER_ZONES,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_URL_FILTER_SWITCHES,
     DOMAIN,
     OPT_DEVICE_TRACKER,
     OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_ROUTER_CLIENTS_SENSORS,
+    OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
     PLATFORMS,
     STORAGE_VERSION,
@@ -157,6 +159,11 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
         _LOGGER.debug("Migrating to version 3")
         updated_options[OPT_DEVICE_TRACKER_ZONES] = DEFAULT_DEVICE_TRACKER_ZONES
         config_entry.version = 3
+
+    if config_entry.version == 3:
+        _LOGGER.debug("Migrating to version 4")
+        updated_options[OPT_URL_FILTER_SWITCHES] = DEFAULT_URL_FILTER_SWITCHES
+        config_entry.version = 4
 
     hass.config_entries.async_update_entry(
         config_entry, data=updated_data, options=updated_options

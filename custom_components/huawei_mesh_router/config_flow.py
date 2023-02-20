@@ -30,6 +30,7 @@ from .const import (
     DEFAULT_ROUTER_CLIENTS_SENSORS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SSL,
+    DEFAULT_URL_FILTER_SWITCHES,
     DEFAULT_USER,
     DEFAULT_VERIFY_SSL,
     DEFAULT_WIFI_ACCESS_SWITCHES,
@@ -38,6 +39,7 @@ from .const import (
     OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_ROUTER_CLIENTS_SENSORS,
+    OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
 )
 
@@ -61,7 +63,7 @@ def configured_instances(hass):
 class HuaweiControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     """HuaweiControllerConfigFlow class"""
 
-    VERSION = 3
+    VERSION = 4
 
     def __init__(self):
         """Initialize HuaweiControllerConfigFlow."""
@@ -225,6 +227,12 @@ class HuaweiControllerOptionsFlowHandler(OptionsFlow):
                         OPT_DEVICE_TRACKER_ZONES,
                         default=self.options.get(
                             OPT_DEVICE_TRACKER_ZONES, DEFAULT_DEVICE_TRACKER_ZONES
+                        ),
+                    ): bool,
+                    vol.Required(
+                        OPT_URL_FILTER_SWITCHES,
+                        default=self.options.get(
+                            OPT_URL_FILTER_SWITCHES, DEFAULT_URL_FILTER_SWITCHES
                         ),
                     ): bool,
                 },
