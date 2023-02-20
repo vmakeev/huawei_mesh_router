@@ -21,6 +21,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
   - enable or disable Wi-Fi access control
   - add/remove devices from blacklist/whitelist
   - Wi-Fi access switch per client device
+- enabling and disabling access to specific sites
 - hardware and firmware version of the primary router
 - internet connection details
 - uptime of each router
@@ -77,6 +78,7 @@ Advanced settings include:
 | Enabling or disabling [Device tags](docs/device-tags.md#device-tags)                                             |  Disabled  |
 | Enabling or disabling [Devices tracking](docs/device-tracking.md#devices-tracking)                               |  Disabled  |
 | Enabling or disabling [Router-specific zones](docs/device-tracking.md#router-specific-zones)                     |  Disabled  |
+| Enabling or disabling [Website filtering switches](docs/controls.md#website-filtering)                           |  Disabled  |
 
 
 ![Options 1/2](docs/images/options_1.png)
@@ -109,6 +111,7 @@ You can attach one or more tags to each client device in order to be able to use
 * Wi-Fi TWT switch ([read more](docs/controls.md#wi-fi-6-twt-switch))
 * Wi-Fi Access Control ([read more](docs/controls.md#wi-fi-access-control))
 * Device Wi-Fi Access ([read more](docs/controls.md#device-wi-fi-access))
+* Website filtering ([read more](docs/controls.md#website-filtering))
 
 ### Selects
 * Wi-Fi access control mode ([read more](docs/controls.md#wi-fi-access-control-mode))

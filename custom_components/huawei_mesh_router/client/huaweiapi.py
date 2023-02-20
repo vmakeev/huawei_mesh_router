@@ -14,7 +14,9 @@ from .classes import (
     HuaweiConnectionInfo,
     HuaweiDeviceNode,
     HuaweiFilterInfo,
+    HuaweiFilterItem,
     HuaweiRouterInfo,
+    HuaweiUrlFilterInfo,
 )
 from .coreapi import APICALL_ERRCAT_UNAUTHORIZED, ApiCallError, HuaweiCoreApi
 
@@ -22,12 +24,14 @@ SWITCH_NFC: Final = "nfc_switch"
 SWITCH_WIFI_80211R: Final = "wifi_80211r_switch"
 SWITCH_WIFI_TWT: Final = "wifi_twt_switch"
 SWITCH_WLAN_FILTER: Final = "wlan_filter_switch"
+SWITCH_URL_FILTER: Final = "url_filter_switch"
 
 ACTION_REBOOT: Final = "reboot_action"
 
 CONNECTED_VIA_ID_PRIMARY: Final = "primary"
 
 FEATURE_NFC: Final = "feature_nfc"
+FEATURE_URL_FILTER: Final = "feature_url_filter"
 FEATURE_WIFI_80211R: Final = "feature_wifi_80211r"
 FEATURE_WIFI_TWT: Final = "feature_wifi_twt"
 FEATURE_WLAN_FILTER: Final = "feature_wlan_filter"
@@ -43,6 +47,7 @@ _URL_REBOOT: Final = "api/service/reboot.cgi"
 _URL_REPEATER_INFO: Final = "api/ntwk/repeaterinfo"
 _URL_WANDETECT: Final = "api/ntwk/wandetect"
 _URL_WLAN_FILTER: Final = "api/ntwk/wlanfilterenhance"
+_URL_URL_FILTER: Final = "api/ntwk/urlfilter"
 
 _STATUS_CONNECTED: Final = "Connected"
 
@@ -153,6 +158,12 @@ class HuaweiFeaturesDetector:
         data = await self._core_api.get(_URL_DEVICE_TOPOLOGY)
         return data is not None
 
+    @log_feature(FEATURE_URL_FILTER)
+    @unauthorized_as_false
+    async def _is_url_filter_available(self) -> bool:
+        data = await self._core_api.get(_URL_URL_FILTER)
+        return data is not None
+
     async def update(self) -> None:
         """Update the available features list."""
         if await self._is_nfc_available():
@@ -170,14 +181,14 @@ class HuaweiFeaturesDetector:
         if await self._is_device_topology_available():
             self._available_features.add(FEATURE_DEVICE_TOPOLOGY)
 
+        if await self._is_url_filter_available():
+            self._available_features.add(FEATURE_URL_FILTER)
+
     def is_available(self, feature: str) -> bool:
         """Return true if feature is available."""
         return feature in self._available_features
 
 
-# ---------------------------
-#   HuaweiApi
-# ---------------------------
 class HuaweiApi:
     def __init__(
         self,
@@ -530,6 +541,27 @@ class HuaweiApi:
                 state_5g = state
         return state_2g, state_5g
 
+    async def apply_url_filter_info(self, url_filter_info: HuaweiUrlFilterInfo) -> None:
+        actual = await self.get_url_filter_info()
+        existing_item = next((item for item in actual if item.filter_id == url_filter_info.filter_id))
+
+        action: str = "update" if existing_item else "create"
+
+        data: dict[str, Any] = {
+            "Devices": [
+                {"MACAddress": device.mac_address} for device in url_filter_info.devices
+            ],
+            "DeviceNames": [
+                {"HostName": device.name} for device in url_filter_info.devices
+            ],
+            "DevManual": url_filter_info.dev_manual,
+            "URL": url_filter_info.url,
+            "Status": 2 if url_filter_info.enabled else 0,
+            "ID": url_filter_info.filter_id,
+        }
+
+        await self._core_api.post(_URL_URL_FILTER, data, extra_data={"action": action})
+
     async def _process_access_lists(
         self,
         state: dict[str, Any],
@@ -660,3 +692,22 @@ class HuaweiApi:
         repeater_enable = data.get("RepeaterEnable", False)
 
         return isinstance(repeater_enable, bool) and repeater_enable
+
+    @staticmethod
+    def _to_url_filter_info(data: dict[str, Any]) -> HuaweiUrlFilterInfo:
+        result = HuaweiUrlFilterInfo(
+            filter_id=data["ID"],
+            url=data["URL"],
+            enabled=data.get("Status", -1) == 2,
+            dev_manual=data.get("DevManual") is True,
+            devices=[
+                HuaweiFilterItem(item[0].get("MACAddress"), item[1].get("HostName"))
+                for item in zip(data["Devices"], data["DeviceNames"])
+            ],
+        )
+
+        return result
+
+    async def get_url_filter_info(self) -> Iterable[HuaweiUrlFilterInfo]:
+        data = await self._core_api.get(_URL_URL_FILTER)
+        return [self._to_url_filter_info(item) for item in data]

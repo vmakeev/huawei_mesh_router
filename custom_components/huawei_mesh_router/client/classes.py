@@ -40,6 +40,18 @@ class HuaweiFilterItem:
 
 
 # ---------------------------
+#   HuaweiUrlFilterInfo
+# ---------------------------
+@dataclass()
+class HuaweiUrlFilterInfo:
+    filter_id: str
+    url: str
+    enabled: bool
+    dev_manual: bool
+    devices: list[HuaweiFilterItem]
+
+
+# ---------------------------
 #   HuaweiFilterItem
 # ---------------------------
 class HuaweiFilterInfo:

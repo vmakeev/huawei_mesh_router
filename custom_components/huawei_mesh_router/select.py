@@ -69,7 +69,7 @@ def watch_for_additional_routers(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
+    router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher(coordinator)
     known_zone_selects: dict[MAC_ADDR, HuaweiRouterZoneSelect] = {}
 
     @callback
@@ -83,7 +83,7 @@ def watch_for_additional_routers(
     @callback
     def coordinator_updated() -> None:
         """Update the status of the device."""
-        router_watcher.look_for_changes(coordinator, on_router_added)
+        router_watcher.look_for_changes(on_router_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
     coordinator_updated()

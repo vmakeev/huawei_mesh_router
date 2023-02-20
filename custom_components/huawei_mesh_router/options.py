@@ -9,11 +9,13 @@ from .const import (
     DEFAULT_DEVICES_TAGS,
     DEFAULT_ROUTER_CLIENTS_SENSORS,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_URL_FILTER_SWITCHES,
     DEFAULT_WIFI_ACCESS_SWITCHES,
     OPT_DEVICE_TRACKER,
     OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_ROUTER_CLIENTS_SENSORS,
+    OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
 )
 
@@ -64,6 +66,13 @@ class HuaweiIntegrationOptions:
         """Return option 'device tracker zones' value"""
         return get_option(
             self._config_entry, OPT_DEVICE_TRACKER_ZONES, DEFAULT_DEVICE_TRACKER_ZONES
+        )
+
+    @property
+    def url_filter_switches(self) -> bool:
+        """Return option 'url filter switches' value"""
+        return get_option(
+            self._config_entry, OPT_URL_FILTER_SWITCHES, DEFAULT_URL_FILTER_SWITCHES
         )
 
     @property

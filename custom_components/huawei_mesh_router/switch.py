@@ -8,22 +8,27 @@ from typing import Any, Final
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
 from .client.huaweiapi import (
     FEATURE_NFC,
+    FEATURE_URL_FILTER,
     FEATURE_WIFI_80211R,
     FEATURE_WIFI_TWT,
     FEATURE_WLAN_FILTER,
     SWITCH_NFC,
+    SWITCH_URL_FILTER,
     SWITCH_WIFI_80211R,
     SWITCH_WIFI_TWT,
     SWITCH_WLAN_FILTER,
 )
+from .const import DOMAIN
 from .helpers import (
     generate_entity_id,
     generate_entity_name,
@@ -36,6 +41,8 @@ from .update_coordinator import (
     ActiveRoutersWatcher,
     ClientWirelessDevicesWatcher,
     HuaweiDataUpdateCoordinator,
+    HuaweiUrlFiltersWatcher,
+    UrlFilter,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,6 +61,9 @@ _FUNCTION_ID_WLAN_FILTER: Final = "switch_wifi_access_control"
 
 _FUNCTION_DISPLAYED_NAME_DEVICE_ACCESS: Final = "Device WiFi Access"
 _FUNCTION_ID_DEVICE_ACCESS: Final = "switch_device_access"
+
+_FUNCTION_DISPLAYED_NAME_URL_FILTER: Final = "URL filter"
+_FUNCTION_ID_URL_FILTER: Final = "switch_url_filter"
 
 ENTITY_DOMAIN: Final = "switch"
 
@@ -97,6 +107,24 @@ async def _add_access_switch_if_available(
 
 
 # ---------------------------
+#   _add_url_filter_switch_if_available
+# ---------------------------
+async def _add_url_filter_switch_if_available(
+    coordinator: HuaweiDataUpdateCoordinator,
+    known_url_filter_switches: dict[str, HuaweiSwitch],
+    url_filter: UrlFilter,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    if await coordinator.is_feature_available(FEATURE_URL_FILTER):
+        if not known_url_filter_switches.get(url_filter.filter_id):
+            entity = HuaweiUrlFilterSwitch(coordinator, url_filter)
+            async_add_entities([entity])
+            known_url_filter_switches[url_filter.filter_id] = entity
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", FEATURE_URL_FILTER)
+
+
+# ---------------------------
 #   async_setup_entry
 # ---------------------------
 async def async_setup_entry(
@@ -134,6 +162,7 @@ async def async_setup_entry(
     async_add_entities(switches)
 
     watch_for_additional_routers(coordinator, config_entry, async_add_entities)
+    watch_for_url_filters(coordinator, config_entry, async_add_entities)
 
 
 # ---------------------------
@@ -144,7 +173,7 @@ def watch_for_additional_routers(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher()
+    router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher(coordinator)
     known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
 
     integration_options = HuaweiIntegrationOptions(config_entry)
@@ -160,7 +189,9 @@ def watch_for_additional_routers(
         )
 
     if is_wifi_switches_enabled:
-        device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher()
+        device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher(
+            coordinator
+        )
         known_access_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
 
     @callback
@@ -179,12 +210,65 @@ def watch_for_additional_routers(
     @callback
     def coordinator_updated() -> None:
         """Update the status of the device."""
-        router_watcher.look_for_changes(coordinator, on_router_added)
+        router_watcher.look_for_changes(on_router_added)
         if is_wifi_switches_enabled:
-            device_watcher.look_for_changes(coordinator, on_wireless_device_added)
+            device_watcher.look_for_changes(on_wireless_device_added)
 
     config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
     coordinator_updated()
+
+
+def watch_for_url_filters(coordinator, config_entry, async_add_entities):
+    integration_options = HuaweiIntegrationOptions(config_entry)
+    is_url_filter_switches_enabled = integration_options.url_filter_switches
+
+    known_url_filter_switches: dict[str, HuaweiSwitch] = {}
+    filters_watcher: HuaweiUrlFiltersWatcher = HuaweiUrlFiltersWatcher(
+        coordinator, lambda item: True
+    )
+
+    @callback
+    def on_filter_added(filter_id: str, url_filter: UrlFilter) -> None:
+        """When a new filter is found."""
+        coordinator.hass.async_add_job(
+            _add_url_filter_switch_if_available(
+                coordinator,
+                known_url_filter_switches,
+                url_filter,
+                async_add_entities,
+            )
+        )
+
+    @callback
+    def on_filter_removed(
+        er: EntityRegistry, filter_id: str, url_filter: UrlFilter
+    ) -> None:
+        """When a known filter removed."""
+        unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_URL_FILTER, filter_id
+        )
+        entity_id = er.async_get_entity_id(Platform.SWITCH, DOMAIN, unique_id)
+        if entity_id:
+            er.async_remove(entity_id)
+            if filter_id in known_url_filter_switches:
+                del known_url_filter_switches[filter_id]
+        else:
+            _LOGGER.warning(
+                "Can not remove unavailable switch '%s': entity id not found.",
+                unique_id,
+            )
+
+    @callback
+    def coordinator_updated() -> None:
+        """Update the status of the device."""
+        if is_url_filter_switches_enabled:
+            filters_watcher.look_for_changes(on_filter_added, on_filter_removed)
+
+    if is_url_filter_switches_enabled:
+        config_entry.async_on_unload(
+            coordinator.async_add_listener(coordinator_updated)
+        )
+        coordinator_updated()
 
 
 # ---------------------------
@@ -195,11 +279,13 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiDataUpdateCoordinator], SwitchEntity,
         self,
         coordinator: HuaweiDataUpdateCoordinator,
         switch_name: str,
-        device_mac: MAC_ADDR | None,
+        device_mac: MAC_ADDR | None = None,
+        switch_id: str | None = None,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
         self._switch_name: str = switch_name
+        self._switch_id: str | None = switch_id
         self._device_mac: MAC_ADDR = device_mac
         self._attr_device_info = coordinator.get_device_info(device_mac)
 
@@ -230,12 +316,14 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiDataUpdateCoordinator], SwitchEntity,
     @property
     def is_on(self) -> bool | None:
         """Return current status."""
-        return self.coordinator.get_switch_state(self._switch_name, self._device_mac)
+        return self.coordinator.get_switch_state(
+            self._switch_name, self._device_mac, self._switch_id
+        )
 
     async def _go_to_state(self, state: bool):
         """Perform transition to the specified state."""
         await self.coordinator.set_switch_state(
-            self._switch_name, state, self._device_mac
+            self._switch_name, state, self._device_mac, self._switch_id
         )
         self.async_write_ha_state()
 
@@ -392,4 +480,62 @@ class HuaweiDeviceAccessSwitch(HuaweiSwitch):
         """Return if entity is available."""
         if not self.coordinator.get_switch_state(SWITCH_WLAN_FILTER):
             return False
+        return self.coordinator.is_router_online() and self.is_on is not None
+
+
+# ---------------------------
+#   HuaweiUrlFilterSwitch
+# ---------------------------
+class HuaweiUrlFilterSwitch(HuaweiSwitch):
+    def __init__(
+        self,
+        coordinator: HuaweiDataUpdateCoordinator,
+        filter_info: UrlFilter,
+    ) -> None:
+        """Initialize."""
+        self._filter_info = filter_info
+        self._attr_extra_state_attributes = {}
+        super().__init__(
+            coordinator, SWITCH_URL_FILTER, switch_id=filter_info.filter_id
+        )
+        self._attr_device_info = None
+
+        self._attr_name = f"{_FUNCTION_DISPLAYED_NAME_URL_FILTER}: {filter_info.url}"
+
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_URL_FILTER, filter_info.filter_id
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_URL_FILTER,
+            filter_info.url,
+        )
+        self._attr_icon = "mdi:link-lock"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+
+        debug_data = (
+            f"Id: {self._filter_info.filter_id}, URL: {self._filter_info.url}, enabled: {self._filter_info.enabled}, "
+            f"dev_manual: {self._filter_info.dev_manual}, devices: {self._filter_info.devices}"
+        )
+
+        _LOGGER.debug("Switch %s: info is %s", self._switch_id, debug_data)
+
+        self._attr_name = (
+            f"{_FUNCTION_DISPLAYED_NAME_URL_FILTER}: {self._filter_info.url}"
+        )
+
+        self._attr_extra_state_attributes["url"] = self._filter_info.url
+        self._attr_extra_state_attributes["devices"] = (
+            self._filter_info.devices if self._filter_info.dev_manual else "All"
+        )
+
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
         return self.coordinator.is_router_online() and self.is_on is not None
