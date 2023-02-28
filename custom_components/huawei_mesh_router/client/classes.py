@@ -31,6 +31,42 @@ class FilterMode(IntEnum):
 
 
 # ---------------------------
+#   HuaweiGuestNetworkDuration
+# ---------------------------
+class HuaweiGuestNetworkDuration(IntEnum):
+    FOUR_HOURS = 1
+    ONE_DAY = 2
+    UNLIMITED = 3
+
+
+# ---------------------------
+#   HuaweiRsaPublicKey
+# ---------------------------
+@dataclass()
+class HuaweiRsaPublicKey:
+    rsan: str
+    rsae: str
+    signature: str
+
+
+# ---------------------------
+#   HuaweiGuestNetworkConfig
+# ---------------------------
+@dataclass()
+class HuaweiGuestNetworkItem:
+    item_id: str
+    enabled: bool
+    sec_opt: str
+    can_enable: bool
+    pwd_score: int
+    valid_time: HuaweiGuestNetworkDuration
+    ssid: str
+    key: str
+    frequency: str
+    rest_rime: int
+
+
+# ---------------------------
 #   HuaweiFilterItem
 # ---------------------------
 @dataclass()

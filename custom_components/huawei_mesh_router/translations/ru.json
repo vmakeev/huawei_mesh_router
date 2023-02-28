@@ -1,6 +1,5 @@
 {
     "config": {
-        "title": "Mesh роутер Huawei",
         "step": {
             "user": {
                 "description": "Настройка интеграции mesh маршрутизатора Huawei.",

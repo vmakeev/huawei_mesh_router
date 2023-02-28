@@ -1,16 +1,17 @@
 {
   "domain": "huawei_mesh_router",
   "name": "Huawei Mesh Router",
-  "integration_type": "hub",
-  "documentation": "https://github.com/vmakeev/huawei_mesh_router",
-  "issue_tracker": "https://github.com/vmakeev/huawei_mesh_router/issues",
   "after_dependencies": [
     "zone"
   ],
   "codeowners": [
     "@vmakeev"
   ],
+  "config_flow": true,
+  "documentation": "https://github.com/vmakeev/huawei_mesh_router",
+  "integration_type": "hub",
   "iot_class": "local_polling",
-  "version": "0.8.6",
-  "config_flow": true
+  "issue_tracker": "https://github.com/vmakeev/huawei_mesh_router/issues",
+  "requirements": ["pycryptodome>=3.12.0"],
+  "version": "0.8.7"
 }

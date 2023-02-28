@@ -5,13 +5,14 @@ from functools import wraps
 import json
 import logging
 import re
-from typing import Any, Callable, Dict, Final
+from typing import Any, Callable, Dict, Final, List
 
 import aiohttp
 from aiohttp import ClientResponse
 from aiohttp.abc import AbstractCookieJar
 from yarl import URL
 
+from .classes import HuaweiRsaPublicKey
 from .crypto import generate_nonce, get_client_proof
 
 TIMEOUT: Final = 5.0
@@ -218,6 +219,7 @@ class HuaweiCoreApi:
         self._verify_ssl: bool = verify_ssl
         self._session: aiohttp.ClientSession | None = None
         self._active_csrf: Dict | None = None
+        self._public_key: Dict | None = None
         self._is_initialized: bool = False
         self._call_locker = asyncio.Lock()
         self._auth_locker = asyncio.Lock()
@@ -229,6 +231,16 @@ class HuaweiCoreApi:
     def router_url(self) -> str:
         """Return router's configuration url."""
         return self._get_url("html/index.html")
+
+    @property
+    def rsa_key(self) -> HuaweiRsaPublicKey | None:
+        if self._public_key is None:
+            return None
+        return HuaweiRsaPublicKey(
+            rsan=self._public_key["rsan"],
+            rsae=self._public_key["rsae"],
+            signature=self._public_key["rsapubkeysignature"],
+        )
 
     def _handle_error_dict(self, data: Dict | None) -> None:
         """handle dict with errors"""
@@ -279,6 +291,24 @@ class HuaweiCoreApi:
         else:
             self._logger.debug("No csrf data found in the response")
 
+    def _handle_public_key_dict(self, data: Dict | None) -> None:
+        """Process the response dict and update the public key if it exists in the response"""
+        if (
+            data is not None
+            and "rsan" in data
+            and "rsae" in data
+            and "rsapubkeysignature" in data
+        ):
+            self._public_key = {
+                "rsan": data["rsan"],
+                "rsae": data["rsae"],
+                "rsapubkeysignature": data["rsapubkeysignature"],
+            }
+            self._logger.debug("Public key updated")
+        else:
+            self._logger.warning("No public key found in the response")
+            self._public_key = None
+
     async def _ensure_initialized(self) -> None:
         """Ensure that initial authorization was completed successfully."""
         if not self._is_initialized:
@@ -305,7 +335,9 @@ class HuaweiCoreApi:
                 APICALL_ERRCAT_REQUEST,
             )
 
-    async def _post_raw(self, path: str, data: Dict) -> ClientResponse:
+    async def _post_raw(
+        self, path: str, data: Dict, headers: dict = None
+    ) -> ClientResponse:
         """Perform POST request to the specified relative URL with specified body and return raw ClientResponse."""
         try:
             self._logger.debug("Performing POST to %s", path)
@@ -314,6 +346,7 @@ class HuaweiCoreApi:
                 data=json.dumps(data),
                 verify_ssl=self._verify_ssl,
                 timeout=TIMEOUT,
+                headers=headers,
             )
             self._logger.debug(
                 "POST to %s performed, status: %s", path, response.status
@@ -403,6 +436,8 @@ class HuaweiCoreApi:
         result = await _get_response_json(response)
         self._handle_csrf_dict(result)
         self._handle_error_dict(result)
+        self._handle_public_key_dict(result)
+
         self._logger.debug("Authentication success")
 
     async def _init_csrf(self) -> bool:
@@ -445,7 +480,7 @@ class HuaweiCoreApi:
 
     @retry_on_csrf_error
     @lock_external_call
-    async def get(self, path: str, **kwargs: Any) -> Dict:
+    async def get(self, path: str, **kwargs: Any) -> Dict | List:
         """Perform GET request to the relative address."""
         await self._ensure_initialized()
 
@@ -484,12 +519,14 @@ class HuaweiCoreApi:
             kwargs.get("check_authorized") or _check_authorized
         )
 
-        dto = {"csrf": self._active_csrf, "data": payload}
+        dto = {"data": payload, "csrf": self._active_csrf}
         if kwargs.get("extra_data") is not None:
             for key, value in kwargs.get("extra_data", {}).items():
                 dto[key] = value
 
-        response = await self._post_raw(path, dto)
+        headers = kwargs.get("headers")
+
+        response = await self._post_raw(path, dto, headers=headers)
         result = await _get_response_json(response)
 
         self._handle_csrf_dict(result)
@@ -505,7 +542,7 @@ class HuaweiCoreApi:
                 for key, value in kwargs.get("extra_data", {}).items():
                     dto[key] = value
 
-            response = await self._post_raw(path, dto)
+            response = await self._post_raw(path, dto, headers=headers)
             result = await _get_response_json(response)
             if not check_authorized(response, result):
                 raise ApiCallError(

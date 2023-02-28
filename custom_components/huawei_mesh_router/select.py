@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 import asyncio
-import logging
 from typing import Final, final
 
 from homeassistant.components.select import SelectEntity

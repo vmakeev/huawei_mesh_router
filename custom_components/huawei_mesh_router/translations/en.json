@@ -1,6 +1,5 @@
 {
     "config": {
-        "title": "Huawei Mesh Router",
         "step": {
             "user": {
                 "description": "Huawei mesh router setup.",

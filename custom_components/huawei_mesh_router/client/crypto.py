@@ -1,6 +1,23 @@
+import base64
 import hashlib
 import hmac
+import math
 from random import randbytes
+
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+
+from .classes import HuaweiRsaPublicKey
+
+_RSA_CHUNK_SIZE = 214
+
+
+# ---------------------------
+#   CryptographyError
+# ---------------------------
+class CryptographyError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
 
 
 def generate_nonce() -> str:
@@ -37,3 +54,33 @@ def get_client_proof(
     )
 
     return client_proof.hex()
+
+
+def rsa_encode(data: str, rsa_key: HuaweiRsaPublicKey) -> str:
+    """Encode string with RSA."""
+    n = int(rsa_key.rsan, 16)
+    e = int(rsa_key.rsae, 16)
+
+    public_key = RSA.construct((n, e)).public_key()
+    encryptor = PKCS1_OAEP.new(public_key)
+
+    data_base64 = base64.b64encode(data.encode("utf-8"))
+
+    chunks_count = math.ceil(len(data_base64) / _RSA_CHUNK_SIZE)
+    result = ""
+
+    i = 0
+    max_length_errors_count = 10
+    while i < chunks_count:
+        index = i * _RSA_CHUNK_SIZE
+        chunk = data_base64[index : index + _RSA_CHUNK_SIZE]
+        encoded_chunk = encryptor.encrypt(chunk).hex()
+        if len(encoded_chunk) != len(rsa_key.rsan):
+            max_length_errors_count -= 1
+            if max_length_errors_count < 0:
+                raise CryptographyError("Too many encoded chunk length errors.")
+            continue
+        i += 1
+        result += encoded_chunk
+
+    return result

@@ -19,7 +19,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import DEVICE_TAG, ConnectedDevice, HuaweiInterfaceType
 from .client.classes import MAC_ADDR
-from .client.huaweiapi import CONNECTED_VIA_ID_PRIMARY
+from .client.const import CONNECTED_VIA_ID_PRIMARY
 from .helpers import (
     generate_entity_id,
     generate_entity_name,

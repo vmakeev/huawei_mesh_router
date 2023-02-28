@@ -1,6 +1,5 @@
 {
     "config": {
-        "title": "Roteadores mesh Huawei",
         "step": {
             "user": {
                 "description": "Configurações dos roteadore mesh Huawei.",
