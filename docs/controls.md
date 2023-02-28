@@ -51,17 +51,26 @@ _Note: Switches for additional routers are located in their own devices._
 
 Allows you to manage the fast roaming feature ([Wi-Fi 802.11r](https://support.huawei.com/enterprise/en/doc/EDOC1000178191/f0c65b61/80211r-fast-roaming)).
 
+Primary router have the following switch:
+* `switch.<integration_name>_802_11r`
+
 The switch will not be added to Home Assistant if the router does not support Wi-Fi 802.11r.
 
 ### Wi-Fi 6 TWT switch
 
 Allows you to manage the Wi-Fi Target Wake Time ([TWT](https://forum.huawei.com/enterprise/en/what-is-twt-in-wifi-devices/thread/623758-869)) feature.
 
+Primary router have the following switch:
+* `switch.<integration_name>_wifi_6_twt`
+
 The switch will not be added to Home Assistant if the router does not support Wi-Fi TWT.
 
 ### Wi-Fi Access Control
 
 Allows you to manage the Wi-Fi Access Control feature.
+
+Primary router have the following switch:
+* `switch.<integration_name>_wifi_access_control`
 
 The switch will not be added to Home Assistant if the Primary router does not support Wi-Fi Access Control.
 
@@ -73,8 +82,6 @@ Allows you to enable or disable access to the Wi-Fi network for individual clien
 
 * turn on: the device is added to the whitelist and removed from the blacklist
 * turn off: the device is added to the blacklist and removed from the whitelist
-
-![Device access switch](images/switch_device_access.png)
 
 See [Wi-Fi Access Control mode](#wi-fi-access-control-mode) for more information about blacklist and whitelist.
 
@@ -117,6 +124,17 @@ These switches will not be added to Home Assistant if the Primary router does no
 _Note: these switches are not attached to a specific router device._
 
 _Note: if the filter is removed in the Primary router, the corresponding switch will be removed from the Home Assistant._
+
+### Guest network
+
+Allows you to enable or disable the guest Wi-Fi network.
+
+Primary router have the following switch:
+* `switch.<integration_name>_guest_network`
+
+Guest network parameters (name, password, access duration, etc.) can be pre-configured in the router's web interface, or using the [service](services.md#set-up-a-guest-network)
+
+The switch will not be added to Home Assistant if the router does not support guest Wi-Fi.
 
 ## Selects
 

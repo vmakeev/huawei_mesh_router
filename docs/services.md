@@ -65,3 +65,28 @@ data:
 ![Service call](images/service_whitelist_remove.png)
 
 Removes a device with the specified MAC address from the whitelist.
+
+### Set up a guest network
+
+Service name: `huawei_mesh_router.guest_network_setup`
+
+Example:
+```
+service: huawei_mesh_router.guest_network_setup
+data:
+  serial_number: ABC123456789
+  enabled: true
+  ssid: MyGuestWiFi
+  duration: 4 hours
+  security: Encrypted
+  password: K3k*eJWtFv!~ME4}
+
+```
+
+![Service call](images/service_guest_network_setup.png)
+
+Configures the parameters of the guest Wi-Fi network.
+
+The serial number of the router can be found in the web interface at this address: `http://<your-router-address>/html/index.html#/more/deviceinfo`
+
+![Serial number](images/router_serial_number.png)
