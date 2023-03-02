@@ -8,6 +8,7 @@ whitelist_add:
       name: MAC Address
       description: The MAC address of wireless connected device.
       required: true
+      example: "11:22:33:AA:BB:CC"
       selector:
         text:
 
@@ -19,6 +20,7 @@ blacklist_add:
       name: MAC Address
       description: The MAC address of wireless connected device.
       required: true
+      example: "11:22:33:AA:BB:CC"
       selector:
         text:
 
@@ -30,6 +32,7 @@ whitelist_remove:
       name: MAC Address
       description: The MAC address of wireless connected device.
       required: true
+      example: "11:22:33:AA:BB:CC"
       selector:
         text:
 
@@ -41,5 +44,62 @@ blacklist_remove:
       name: MAC Address
       description: The MAC address of wireless connected device.
       required: true
+      example: "11:22:33:AA:BB:CC"
+      selector:
+        text:
+
+guest_network_setup:
+  name: Set up a guest network
+  description: Configure the parameters of the guest Wi-Fi network.
+  fields:
+    serial_number:
+      name: Router serial number
+      description: Serial number of the primary router.
+      required: true
+      selector:
+        text:
+    enabled:
+      name: Enable guest network
+      description: Enable or disable guest Wi-Fi network.
+      required: true
+      example: true
+      default: true
+      selector:
+        boolean:
+    ssid:
+      name: Wi-Fi name
+      description: Name of the guest Wi-Fi network.
+      required: true
+      example: "MyGuestWiFi"
+      selector:
+        text:
+    duration:
+      name: Access duration
+      description: Duration of access to the guest Wi-Fi network
+      required: true
+      example: "4 hours"
+      default: "4 hours"
+      selector:
+        select:
+          options:
+            - "4 hours"
+            - "1 day"
+            - "Unlimited"
+    security:
+      name: Security
+      description: Guest Wi-Fi network security.
+      required: true
+      example: "Encrypted"
+      default: "Encrypted"
+      selector:
+        select:
+          options:
+            - "Encrypted"
+            - "Open"
+    password:
+      name: Wi-Fi password
+      description: Password to access the guest Wi-Fi network.
+      required: true
+      example: "K3k*eJWtFv!~ME4}"
       selector:
         text:

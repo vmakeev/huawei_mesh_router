@@ -18,6 +18,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
   - name of the specific router to which the device is connected
   - number of connected devices (total and for each individual router)
 - Wi-Fi access management:
+  - enable/disable/configure the guest Wi-Fi network
   - enable or disable Wi-Fi access control
   - add/remove devices from blacklist/whitelist
   - Wi-Fi access switch per client device
@@ -106,12 +107,13 @@ You can attach one or more tags to each client device in order to be able to use
 
 ### Switches
 
-* NFC switch ([read more](docs/controls.md#nfc-switch))
-* Wi-Fi 802.11r switch ([read more](docs/controls.md#wi-fi-80211r-switch))
-* Wi-Fi TWT switch ([read more](docs/controls.md#wi-fi-6-twt-switch))
+* NFC ([read more](docs/controls.md#nfc-switch))
+* Wi-Fi 802.11r ([read more](docs/controls.md#wi-fi-80211r-switch))
+* Wi-Fi TWT ([read more](docs/controls.md#wi-fi-6-twt-switch))
 * Wi-Fi Access Control ([read more](docs/controls.md#wi-fi-access-control))
 * Device Wi-Fi Access ([read more](docs/controls.md#device-wi-fi-access))
 * Website filtering ([read more](docs/controls.md#website-filtering))
+* Guest network ([read more](docs/controls.md#guest-network))
 
 ### Selects
 * Wi-Fi access control mode ([read more](docs/controls.md#wi-fi-access-control-mode))
@@ -123,3 +125,4 @@ You can attach one or more tags to each client device in order to be able to use
 * Add device to the blacklist ([read more](docs/services.md#add-device-to-the-blacklist))
 * Remove device from the whitelist ([read more](docs/services.md#remove-device-from-the-whitelist))
 * Remove device from the blacklist ([read more](docs/services.md#remove-device-from-the-blacklist))
+* Configure the parameters of the guest Wi-Fi network ([read more](docs/services.md#set-up-a-guest-network))

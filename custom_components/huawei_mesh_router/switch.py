@@ -16,12 +16,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import ConnectedDevice
 from .client.classes import MAC_ADDR
-from .client.huaweiapi import (
+from .client.const import (
+    FEATURE_GUEST_NETWORK,
     FEATURE_NFC,
     FEATURE_URL_FILTER,
     FEATURE_WIFI_80211R,
     FEATURE_WIFI_TWT,
     FEATURE_WLAN_FILTER,
+    SWITCH_GUEST_NETWORK,
     SWITCH_NFC,
     SWITCH_URL_FILTER,
     SWITCH_WIFI_80211R,
@@ -64,6 +66,9 @@ _FUNCTION_ID_DEVICE_ACCESS: Final = "switch_device_access"
 
 _FUNCTION_DISPLAYED_NAME_URL_FILTER: Final = "URL filter"
 _FUNCTION_ID_URL_FILTER: Final = "switch_url_filter"
+
+_FUNCTION_DISPLAYED_NAME_GUEST_NETWORK: Final = "Guest network"
+_FUNCTION_ID_GUEST_NETWORK: Final = "switch_guest_network"
 
 ENTITY_DOMAIN: Final = "switch"
 
@@ -159,6 +164,11 @@ async def async_setup_entry(
     else:
         _LOGGER.debug("Feature '%s' is not supported", FEATURE_WLAN_FILTER)
 
+    if await coordinator.is_feature_available(FEATURE_GUEST_NETWORK):
+        switches.append(HuaweiGuestNetworkSwitch(coordinator))
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", FEATURE_GUEST_NETWORK)
+
     async_add_entities(switches)
 
     watch_for_additional_routers(coordinator, config_entry, async_add_entities)
@@ -223,9 +233,7 @@ def watch_for_url_filters(coordinator, config_entry, async_add_entities):
     is_url_filter_switches_enabled = integration_options.url_filter_switches
 
     known_url_filter_switches: dict[str, HuaweiSwitch] = {}
-    filters_watcher: HuaweiUrlFiltersWatcher = HuaweiUrlFiltersWatcher(
-        coordinator, lambda item: True
-    )
+    filters_watcher: HuaweiUrlFiltersWatcher = HuaweiUrlFiltersWatcher(coordinator)
 
     @callback
     def on_filter_added(filter_id: str, url_filter: UrlFilter) -> None:
@@ -441,6 +449,34 @@ class HuaweiWlanFilterSwitch(HuaweiSwitch):
         )
         self._attr_icon = "mdi:access-point-check"
         self._attr_entity_registry_enabled_default = False
+
+    async def _go_to_state(self, state: bool):
+        """Perform transition to the specified state."""
+        await super()._go_to_state(state)
+        self.coordinator.async_update_listeners()
+
+
+# ---------------------------
+#   HuaweiGuestNetworkSwitch
+# ---------------------------
+class HuaweiGuestNetworkSwitch(HuaweiSwitch):
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator, SWITCH_GUEST_NETWORK, None)
+
+        self._attr_name = generate_entity_name(
+            _FUNCTION_DISPLAYED_NAME_GUEST_NETWORK, coordinator.primary_router_name
+        )
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_GUEST_NETWORK
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_GUEST_NETWORK,
+        )
+        self._attr_icon = "mdi:wifi-refresh"
+        self._attr_entity_registry_enabled_default = True
 
     async def _go_to_state(self, state: bool):
         """Perform transition to the specified state."""
