@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, StrEnum
 from typing import Any, Dict, Final, Iterable, TypeAlias
 
 VENDOR_CLASS_ID_ROUTER: Final = "router"
@@ -12,6 +12,45 @@ NODE_HILINK_TYPE_DEVICE: Final = "Device"
 NODE_HILINK_TYPE_NONE: Final = "None"
 
 MAC_ADDR: TypeAlias = str
+
+
+# ---------------------------
+#   Feature
+# ---------------------------
+class Feature(StrEnum):
+    NFC: Final = "feature_nfc"
+    URL_FILTER = "feature_url_filter"
+    WIFI_80211R = "feature_wifi_80211r"
+    WIFI_TWT = "feature_wifi_twt"
+    WLAN_FILTER = "feature_wlan_filter"
+    DEVICE_TOPOLOGY = "feature_device_topology"
+    GUEST_NETWORK = "feature_guest_network"
+
+
+# ---------------------------
+#   Switch
+# ---------------------------
+class Switch(StrEnum):
+    NFC: Final = "nfc_switch"
+    WIFI_80211R = "wifi_80211r_switch"
+    WIFI_TWT = "wifi_twt_switch"
+    WLAN_FILTER = "wlan_filter_switch"
+    GUEST_NETWORK = "guest_network_switch"
+
+
+# ---------------------------
+#   Action
+# ---------------------------
+class Action(StrEnum):
+    REBOOT: Final = "reboot_action"
+
+
+# ---------------------------
+#   Frequency
+# ---------------------------
+class Frequency(StrEnum):
+    WIFI_2_4_GHZ = "2.4GHz"
+    WIFI_5_GHZ = "5GHz"
 
 
 # ---------------------------

@@ -344,7 +344,6 @@ class HuaweiConnectedDevicesSensor(HuaweiSensor):
                 tagged_devices[tag] = 0
 
         for device in self.coordinator.connected_devices.values():
-
             if not self._devices_predicate(device):
                 continue
 

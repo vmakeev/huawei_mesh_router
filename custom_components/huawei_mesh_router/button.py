@@ -11,8 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import ConnectedDevice
-from .client.classes import MAC_ADDR
-from .client.huaweiapi import ACTION_REBOOT
+from .client.classes import MAC_ADDR, Action
 from .helpers import (
     generate_entity_id,
     generate_entity_name,
@@ -80,12 +79,12 @@ class HuaweiButton(CoordinatorEntity[HuaweiDataUpdateCoordinator], ButtonEntity,
     def __init__(
         self,
         coordinator: HuaweiDataUpdateCoordinator,
-        action_name: str,
+        action: Action,
         device_mac: MAC_ADDR | None,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self._action_name: str = action_name
+        self._action: Action = action
         self._device_mac: MAC_ADDR = device_mac
         self._attr_device_info = coordinator.get_device_info(device_mac)
 
@@ -100,10 +99,10 @@ class HuaweiButton(CoordinatorEntity[HuaweiDataUpdateCoordinator], ButtonEntity,
         self._handle_coordinator_update()
         if self._device_mac:
             _LOGGER.debug(
-                "Button %s (%s) added to hass", self._action_name, self._device_mac
+                "Button %s (%s) added to hass", self._action, self._device_mac
             )
         else:
-            _LOGGER.debug("Button %s added to hass", self._action_name)
+            _LOGGER.debug("Button %s added to hass", self._action)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -112,7 +111,7 @@ class HuaweiButton(CoordinatorEntity[HuaweiDataUpdateCoordinator], ButtonEntity,
 
     async def async_press(self) -> None:
         """Triggers the button press service."""
-        await self.coordinator.execute_action(self._action_name, self._device_mac)
+        await self.coordinator.execute_action(self._action, self._device_mac)
 
     def press(self) -> None:
         """Press the button."""
@@ -131,7 +130,7 @@ class HuaweiRebootButton(HuaweiButton):
         device: ConnectedDevice | None,
     ) -> None:
         """Initialize."""
-        super().__init__(coordinator, ACTION_REBOOT, device.mac if device else None)
+        super().__init__(coordinator, Action.REBOOT, device.mac if device else None)
 
         self._attr_device_class = ButtonDeviceClass.RESTART
 

@@ -7,8 +7,11 @@ from aiohttp import ClientResponse
 
 from .classes import (
     MAC_ADDR,
+    Action,
+    Feature,
     FilterAction,
     FilterMode,
+    Frequency,
     HuaweiClientDevice,
     HuaweiConnectionInfo,
     HuaweiDeviceNode,
@@ -19,21 +22,9 @@ from .classes import (
     HuaweiRouterInfo,
     HuaweiRsaPublicKey,
     HuaweiUrlFilterInfo,
+    Switch,
 )
 from .const import (
-    ACTION_REBOOT,
-    FEATURE_GUEST_NETWORK,
-    FEATURE_NFC,
-    FEATURE_WIFI_80211R,
-    FEATURE_WIFI_TWT,
-    FEATURE_WLAN_FILTER,
-    FREQUENCY_2_4_GHZ,
-    FREQUENCY_5_GHZ,
-    SWITCH_GUEST_NETWORK,
-    SWITCH_NFC,
-    SWITCH_WIFI_80211R,
-    SWITCH_WIFI_TWT,
-    SWITCH_WLAN_FILTER,
     URL_DEVICE_INFO,
     URL_DEVICE_TOPOLOGY,
     URL_GUEST_NETWORK,
@@ -121,7 +112,7 @@ class HuaweiApi:
         """URL address of the router."""
         return self._core_api.router_url
 
-    async def is_feature_available(self, feature: str) -> bool:
+    async def is_feature_available(self, feature: Feature) -> bool:
         """Return true if specified feature is known and available."""
         await self._ensure_features_updated()
         return self._features.is_available(feature)
@@ -173,34 +164,36 @@ class HuaweiApi:
             address=data.get("ExternalIPAddress"),
         )
 
-    async def get_switch_state(self, name: str) -> bool:
+    async def get_switch_state(self, switch: Switch) -> bool:
         """Return the specified switch state."""
         await self._ensure_features_updated()
 
-        if name == SWITCH_NFC and self._features.is_available(FEATURE_NFC):
+        if switch == Switch.NFC and self._features.is_available(Feature.NFC):
             data = await self._core_api.get(URL_SWITCH_NFC)
             return data.get("nfcSwitch") == 1
 
-        elif name == SWITCH_WIFI_80211R and self._features.is_available(
-            FEATURE_WIFI_80211R
+        elif switch == Switch.WIFI_80211R and self._features.is_available(
+            Feature.WIFI_80211R
         ):
             data = await self._core_api.get(URL_SWITCH_WIFI_80211R)
             setting_value = data.get("WifiConfig", [{}])[0].get("Dot11REnable")
             return isinstance(setting_value, bool) and setting_value
 
-        elif name == SWITCH_WIFI_TWT and self._features.is_available(FEATURE_WIFI_TWT):
+        elif switch == Switch.WIFI_TWT and self._features.is_available(
+            Feature.WIFI_TWT
+        ):
             data = await self._core_api.get(URL_SWITCH_WIFI_TWT)
             setting_value = data.get("WifiConfig", [{}])[0].get("TWTEnable")
             return isinstance(setting_value, bool) and setting_value
 
-        elif name == SWITCH_WLAN_FILTER and self._features.is_available(
-            FEATURE_WLAN_FILTER
+        elif switch == Switch.WLAN_FILTER and self._features.is_available(
+            Feature.WLAN_FILTER
         ):
             _, data = await self.get_wlan_filter_info()
             return data.enabled
 
-        elif name == SWITCH_GUEST_NETWORK and self._features.is_available(
-            FEATURE_GUEST_NETWORK
+        elif switch == Switch.GUEST_NETWORK and self._features.is_available(
+            Feature.GUEST_NETWORK
         ):
             data_2g, data_5g = await self.get_guest_network_info()
             return (data_2g is not None and data_2g.enabled) or (
@@ -208,17 +201,17 @@ class HuaweiApi:
             )
 
         else:
-            raise UnsupportedActionError(f"Unsupported switch name: {name}")
+            raise UnsupportedActionError(f"Unsupported switch: {switch}")
 
-    async def set_switch_state(self, name: str, state: bool) -> None:
+    async def set_switch_state(self, switch: Switch, state: bool) -> None:
         """Set the specified switch state."""
         await self._ensure_features_updated()
 
-        if name == SWITCH_NFC and self._features.is_available(FEATURE_NFC):
+        if switch == Switch.NFC and self._features.is_available(Feature.NFC):
             await self._core_api.post(URL_SWITCH_NFC, {"nfcSwitch": 1 if state else 0})
 
-        elif name == SWITCH_WIFI_80211R and self._features.is_available(
-            FEATURE_WIFI_80211R
+        elif switch == Switch.WIFI_80211R and self._features.is_available(
+            Feature.WIFI_80211R
         ):
             await self._core_api.post(
                 URL_SWITCH_WIFI_80211R,
@@ -226,25 +219,27 @@ class HuaweiApi:
                 extra_data={"action": "11rSetting"},
             )
 
-        elif name == SWITCH_WIFI_TWT and self._features.is_available(FEATURE_WIFI_TWT):
+        elif switch == Switch.WIFI_TWT and self._features.is_available(
+            Feature.WIFI_TWT
+        ):
             await self._core_api.post(
                 URL_SWITCH_WIFI_TWT,
                 {"TWTEnable": state},
                 extra_data={"action": "TWTSetting"},
             )
 
-        elif name == SWITCH_WLAN_FILTER and self._features.is_available(
-            FEATURE_WLAN_FILTER
+        elif switch == Switch.WLAN_FILTER and self._features.is_available(
+            Feature.WLAN_FILTER
         ):
             await self._set_wlan_filter_enabled(state)
 
-        elif name == SWITCH_GUEST_NETWORK and self._features.is_available(
-            FEATURE_GUEST_NETWORK
+        elif switch == Switch.GUEST_NETWORK and self._features.is_available(
+            Feature.GUEST_NETWORK
         ):
             await self._set_guest_network_enabled(state)
 
         else:
-            raise UnsupportedActionError(f"Unsupported switch name: {name}")
+            raise UnsupportedActionError(f"Unsupported switch: {switch}")
 
     async def get_known_devices(self) -> Iterable[HuaweiClientDevice]:
         """Return the known devices."""
@@ -268,12 +263,12 @@ class HuaweiApi:
             for item in await self._core_api.get(URL_DEVICE_TOPOLOGY)
         ]
 
-    async def execute_action(self, action_name: str) -> None:
+    async def execute_action(self, action: Action) -> None:
         """Execute specified action."""
-        if action_name == ACTION_REBOOT:
+        if action == Action.REBOOT:
             await self._core_api.post(URL_REBOOT, {})
         else:
-            raise UnsupportedActionError(f"Unsupported action name: {action_name}")
+            raise UnsupportedActionError(f"Unsupported action name: {action}")
 
     async def apply_wlan_filter(
         self,
@@ -442,9 +437,9 @@ class HuaweiApi:
         state_5g = None
         for state in actual_states:
             frequency = state.get("FrequencyBand")
-            if frequency == FREQUENCY_2_4_GHZ:
+            if frequency == Frequency.WIFI_2_4_GHZ:
                 state_2g = state
-            elif frequency == FREQUENCY_5_GHZ:
+            elif frequency == Frequency.WIFI_5_GHZ:
                 state_5g = state
         return state_2g, state_5g
 
@@ -536,7 +531,6 @@ class HuaweiApi:
                 break
 
         if filter_action == FilterAction.REMOVE:
-
             if filter_mode == FilterMode.BLACKLIST:
                 if blacklist_index is None:
                     self._logger.debug(
@@ -644,9 +638,9 @@ class HuaweiApi:
         item_5g = None
 
         for item in data:
-            if item.get("FrequencyBand") == FREQUENCY_2_4_GHZ:
+            if item.get("FrequencyBand") == Frequency.WIFI_2_4_GHZ:
                 item_2g = item
-            elif item.get("FrequencyBand") == FREQUENCY_5_GHZ:
+            elif item.get("FrequencyBand") == Frequency.WIFI_5_GHZ:
                 item_5g = item
 
         result_2g = None if not item_2g else self._to_huawei_guest_network_item(item_2g)
@@ -663,7 +657,6 @@ class HuaweiApi:
         secure: bool,
         password: str | None,
     ) -> dict[str, Any]:
-
         if secure and not password:
             raise InvalidActionError("Password must be specified")
 
@@ -706,7 +699,6 @@ class HuaweiApi:
         )
 
     async def _set_guest_network_enabled(self, enabled: bool) -> None:
-
         actual_2g, actual_5g = await self.get_guest_network_info()
 
         actual_enabled = (actual_2g is not None and actual_2g.enabled) or (

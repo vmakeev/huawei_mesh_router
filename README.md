@@ -4,7 +4,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
-![Active installations](https://raw.githubusercontent.com/vmakeev/custom_badges_updater/main/huawei_mesh_router.svg)
+![Active installatons](https://img.shields.io/badge/dynamic/json?color=blue&label=active%20installations&query=$[%27huawei_mesh_router%27][%27total%27]&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&cacheSeconds=600)
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
@@ -66,9 +66,12 @@ By default, Huawei mesh routers use the username `admin`, although it is not dis
 
 ### Advanced options
 
-You can perform advanced component configuration by clicking the `CONFIGURE` button after adding it. 
+You can perform advanced configuration of the component after adding it. 
+To do this, click on the gear, and in the tab that opens, click `CONFIGURE`
 
 ![Integration](docs/images/integration.png)
+
+![Integration details](docs/images/integration_details.png)
 
 Advanced settings include:
 |                                                       Name                                                       |  Default   |
