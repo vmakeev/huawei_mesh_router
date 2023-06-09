@@ -1,9 +1,8 @@
 """Huawei Mesh Router component classes."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Dict, Iterable, Tuple
-
-from homeassistant.backports.enum import StrEnum
 
 from .client.classes import MAC_ADDR, HuaweiFilterItem
 
@@ -17,6 +16,22 @@ DEVICE_TAG = str
 class ZoneInfo:
     name: str
     entity_id: str
+
+
+# ---------------------------
+#   Select
+# ---------------------------
+class Select(StrEnum):
+    WLAN_FILTER_MODE = "wlan_filter_mode_select"
+    ROUTER_ZONE = "router_zone_select"
+
+
+# ---------------------------
+#   EmulatedSwitch
+# ---------------------------
+class EmulatedSwitch(StrEnum):
+    DEVICE_ACCESS = "wlan_device_access_switch"
+    URL_FILTER = "url_filter_switch"
 
 
 # ---------------------------

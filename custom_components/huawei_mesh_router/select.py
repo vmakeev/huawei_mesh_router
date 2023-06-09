@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
+import logging
 from typing import Final, final
 
 from homeassistant.components.select import SelectEntity
@@ -10,8 +11,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .classes import ConnectedDevice, HuaweiWlanFilterMode
-from .client.classes import MAC_ADDR
+from .classes import ConnectedDevice, HuaweiWlanFilterMode, Select
+from .client.classes import MAC_ADDR, Feature, Switch
 from .helpers import (
     generate_entity_id,
     generate_entity_name,
@@ -19,13 +20,9 @@ from .helpers import (
     get_coordinator,
 )
 from .options import HuaweiIntegrationOptions
-from .update_coordinator import (
-    SELECT_ROUTER_ZONE,
-    SELECT_WLAN_FILTER_MODE,
-    SWITCH_WLAN_FILTER,
-    ActiveRoutersWatcher,
-    HuaweiDataUpdateCoordinator,
-)
+from .update_coordinator import ActiveRoutersWatcher, HuaweiDataUpdateCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 ENTITY_DOMAIN: Final = "select"
 
@@ -49,7 +46,12 @@ async def async_setup_entry(
     coordinator = get_coordinator(hass, config_entry)
     integration_options = HuaweiIntegrationOptions(config_entry)
 
-    selects: list[HuaweiSelect] = [HuaweiWlanFilterModeSelect(coordinator)]
+    selects: list[HuaweiSelect] = []
+
+    if await coordinator.is_feature_available(Feature.WLAN_FILTER):
+        selects.append(HuaweiWlanFilterModeSelect(coordinator))
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WLAN_FILTER)
 
     if integration_options.device_tracker_zones:
         selects.append(HuaweiRouterZoneSelect(coordinator, None))
@@ -95,13 +97,13 @@ class HuaweiSelect(CoordinatorEntity[HuaweiDataUpdateCoordinator], SelectEntity,
     def __init__(
         self,
         coordinator: HuaweiDataUpdateCoordinator,
-        select_name: str,
+        select: Select,
         device_mac: MAC_ADDR | None,
         options: list[str],
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self._select_name = select_name
+        self._select = select
         self._device_mac = device_mac
         self._attr_options = options
         self._attr_device_info = coordinator.get_device_info(device_mac)
@@ -114,13 +116,11 @@ class HuaweiSelect(CoordinatorEntity[HuaweiDataUpdateCoordinator], SelectEntity,
     @property
     def current_option(self) -> str | None:
         """Return current option."""
-        return self.coordinator.get_select_state(self._select_name, self._device_mac)
+        return self.coordinator.get_select_state(self._select, self._device_mac)
 
     async def async_select_option(self, option: str) -> None:
         """Handle option changed."""
-        await self.coordinator.set_select_state(
-            self._select_name, option, self._device_mac
-        )
+        await self.coordinator.set_select_state(self._select, option, self._device_mac)
         self.async_write_ha_state()
 
     @final
@@ -138,13 +138,13 @@ class HuaweiMappedSelect(HuaweiSelect, ABC):
     def __init__(
         self,
         coordinator: HuaweiDataUpdateCoordinator,
-        select_name: str,
+        select: Select,
         device_mac: MAC_ADDR | None,
     ) -> None:
         """Initialize."""
         values_to_displayed = self._fetch_values_to_displayed(coordinator)
         super().__init__(
-            coordinator, select_name, device_mac, list(values_to_displayed.values())
+            coordinator, select, device_mac, list(values_to_displayed.values())
         )
         self._values_to_displayed = dict(values_to_displayed)
         self._displayed_to_values = {
@@ -203,7 +203,7 @@ class HuaweiWlanFilterModeSelect(HuaweiSelect):
     ) -> None:
         """Initialize."""
         super().__init__(
-            coordinator, SELECT_WLAN_FILTER_MODE, None, _OPTIONS_WLAN_FILTER_MODE
+            coordinator, Select.WLAN_FILTER_MODE, None, _OPTIONS_WLAN_FILTER_MODE
         )
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_WLAN_FILTER_MODE, coordinator.primary_router_name
@@ -222,7 +222,7 @@ class HuaweiWlanFilterModeSelect(HuaweiSelect):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if not self.coordinator.get_switch_state(SWITCH_WLAN_FILTER):
+        if not self.coordinator.get_switch_state(Switch.WLAN_FILTER):
             return False
         return super().available
 
@@ -242,7 +242,7 @@ class HuaweiRouterZoneSelect(HuaweiMappedSelect):
     ) -> None:
         """Initialize."""
         super().__init__(
-            coordinator, SELECT_ROUTER_ZONE, device.mac if device else None
+            coordinator, Select.ROUTER_ZONE, device.mac if device else None
         )
 
         self._attr_name = generate_entity_name(

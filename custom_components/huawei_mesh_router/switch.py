@@ -14,22 +14,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .classes import ConnectedDevice
-from .client.classes import MAC_ADDR
-from .client.const import (
-    FEATURE_GUEST_NETWORK,
-    FEATURE_NFC,
-    FEATURE_URL_FILTER,
-    FEATURE_WIFI_80211R,
-    FEATURE_WIFI_TWT,
-    FEATURE_WLAN_FILTER,
-    SWITCH_GUEST_NETWORK,
-    SWITCH_NFC,
-    SWITCH_URL_FILTER,
-    SWITCH_WIFI_80211R,
-    SWITCH_WIFI_TWT,
-    SWITCH_WLAN_FILTER,
-)
+from .classes import ConnectedDevice, EmulatedSwitch
+from .client.classes import MAC_ADDR, Feature, Switch
 from .const import DOMAIN
 from .helpers import (
     generate_entity_id,
@@ -39,7 +25,6 @@ from .helpers import (
 )
 from .options import HuaweiIntegrationOptions
 from .update_coordinator import (
-    SWITCH_DEVICE_ACCESS,
     ActiveRoutersWatcher,
     ClientWirelessDevicesWatcher,
     HuaweiDataUpdateCoordinator,
@@ -83,13 +68,13 @@ async def _add_nfc_if_available(
     router: ConnectedDevice,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if await coordinator.is_feature_available(FEATURE_NFC, mac):
+    if await coordinator.is_feature_available(Feature.NFC, mac):
         if not known_nfc_switches.get(mac):
             entity = HuaweiNfcSwitch(coordinator, router)
             async_add_entities([entity])
             known_nfc_switches[mac] = entity
     else:
-        _LOGGER.debug("Feature '%s' is not supported at %s", FEATURE_NFC, mac)
+        _LOGGER.debug("Feature '%s' is not supported at %s", Feature.NFC, mac)
 
 
 # ---------------------------
@@ -102,13 +87,13 @@ async def _add_access_switch_if_available(
     device: ConnectedDevice,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if await coordinator.is_feature_available(FEATURE_WLAN_FILTER):
+    if await coordinator.is_feature_available(Feature.WLAN_FILTER):
         if not known_access_switches.get(mac):
             entity = HuaweiDeviceAccessSwitch(coordinator, device)
             async_add_entities([entity])
             known_access_switches[mac] = entity
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_WLAN_FILTER)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WLAN_FILTER)
 
 
 # ---------------------------
@@ -120,13 +105,13 @@ async def _add_url_filter_switch_if_available(
     url_filter: UrlFilter,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if await coordinator.is_feature_available(FEATURE_URL_FILTER):
+    if await coordinator.is_feature_available(Feature.URL_FILTER):
         if not known_url_filter_switches.get(url_filter.filter_id):
             entity = HuaweiUrlFilterSwitch(coordinator, url_filter)
             async_add_entities([entity])
             known_url_filter_switches[url_filter.filter_id] = entity
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_URL_FILTER)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.URL_FILTER)
 
 
 # ---------------------------
@@ -142,32 +127,32 @@ async def async_setup_entry(
 
     switches: list[HuaweiSwitch] = []
 
-    is_nfc_available: bool = await coordinator.is_feature_available(FEATURE_NFC)
+    is_nfc_available: bool = await coordinator.is_feature_available(Feature.NFC)
 
     if is_nfc_available:
         switches.append(HuaweiNfcSwitch(coordinator, None))
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_NFC)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.NFC)
 
-    if await coordinator.is_feature_available(FEATURE_WIFI_80211R):
+    if await coordinator.is_feature_available(Feature.WIFI_80211R):
         switches.append(HuaweiWifi80211RSwitch(coordinator))
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_WIFI_80211R)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WIFI_80211R)
 
-    if await coordinator.is_feature_available(FEATURE_WIFI_TWT):
+    if await coordinator.is_feature_available(Feature.WIFI_TWT):
         switches.append(HuaweiWifiTWTSwitch(coordinator))
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_WIFI_TWT)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WIFI_TWT)
 
-    if await coordinator.is_feature_available(FEATURE_WLAN_FILTER):
+    if await coordinator.is_feature_available(Feature.WLAN_FILTER):
         switches.append(HuaweiWlanFilterSwitch(coordinator))
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_WLAN_FILTER)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WLAN_FILTER)
 
-    if await coordinator.is_feature_available(FEATURE_GUEST_NETWORK):
+    if await coordinator.is_feature_available(Feature.GUEST_NETWORK):
         switches.append(HuaweiGuestNetworkSwitch(coordinator))
     else:
-        _LOGGER.debug("Feature '%s' is not supported", FEATURE_GUEST_NETWORK)
+        _LOGGER.debug("Feature '%s' is not supported", Feature.GUEST_NETWORK)
 
     async_add_entities(switches)
 
@@ -286,13 +271,13 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiDataUpdateCoordinator], SwitchEntity,
     def __init__(
         self,
         coordinator: HuaweiDataUpdateCoordinator,
-        switch_name: str,
+        switch: Switch | EmulatedSwitch,
         device_mac: MAC_ADDR | None = None,
         switch_id: str | None = None,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self._switch_name: str = switch_name
+        self._switch: Switch | EmulatedSwitch = switch
         self._switch_id: str | None = switch_id
         self._device_mac: MAC_ADDR = device_mac
         self._attr_device_info = coordinator.get_device_info(device_mac)
@@ -303,10 +288,10 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiDataUpdateCoordinator], SwitchEntity,
         self._handle_coordinator_update()
         if self._device_mac:
             _LOGGER.debug(
-                "Switch %s (%s) added to hass", self._switch_name, self._device_mac
+                "Switch %s (%s) added to hass", self._switch, self._device_mac
             )
         else:
-            _LOGGER.debug("Switch %s added to hass", self._switch_name)
+            _LOGGER.debug("Switch %s added to hass", self._switch)
 
     @property
     def available(self) -> bool:
@@ -325,13 +310,13 @@ class HuaweiSwitch(CoordinatorEntity[HuaweiDataUpdateCoordinator], SwitchEntity,
     def is_on(self) -> bool | None:
         """Return current status."""
         return self.coordinator.get_switch_state(
-            self._switch_name, self._device_mac, self._switch_id
+            self._switch, self._device_mac, self._switch_id
         )
 
     async def _go_to_state(self, state: bool):
         """Perform transition to the specified state."""
         await self.coordinator.set_switch_state(
-            self._switch_name, state, self._device_mac, self._switch_id
+            self._switch, state, self._device_mac, self._switch_id
         )
         self.async_write_ha_state()
 
@@ -366,7 +351,7 @@ class HuaweiNfcSwitch(HuaweiSwitch):
         device: ConnectedDevice | None,
     ) -> None:
         """Initialize."""
-        super().__init__(coordinator, SWITCH_NFC, device.mac if device else None)
+        super().__init__(coordinator, Switch.NFC, device.mac if device else None)
 
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_NFC,
@@ -390,7 +375,7 @@ class HuaweiNfcSwitch(HuaweiSwitch):
 class HuaweiWifi80211RSwitch(HuaweiSwitch):
     def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
-        super().__init__(coordinator, SWITCH_WIFI_80211R, None)
+        super().__init__(coordinator, Switch.WIFI_80211R, None)
 
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_WIFI_802_11_R, coordinator.primary_router_name
@@ -412,7 +397,7 @@ class HuaweiWifi80211RSwitch(HuaweiSwitch):
 class HuaweiWifiTWTSwitch(HuaweiSwitch):
     def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
-        super().__init__(coordinator, SWITCH_WIFI_TWT, None)
+        super().__init__(coordinator, Switch.WIFI_TWT, None)
 
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_WIFI_TWT, coordinator.primary_router_name
@@ -434,7 +419,7 @@ class HuaweiWifiTWTSwitch(HuaweiSwitch):
 class HuaweiWlanFilterSwitch(HuaweiSwitch):
     def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
-        super().__init__(coordinator, SWITCH_WLAN_FILTER, None)
+        super().__init__(coordinator, Switch.WLAN_FILTER, None)
 
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_WLAN_FILTER, coordinator.primary_router_name
@@ -462,7 +447,7 @@ class HuaweiWlanFilterSwitch(HuaweiSwitch):
 class HuaweiGuestNetworkSwitch(HuaweiSwitch):
     def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
-        super().__init__(coordinator, SWITCH_GUEST_NETWORK, None)
+        super().__init__(coordinator, Switch.GUEST_NETWORK, None)
 
         self._attr_name = generate_entity_name(
             _FUNCTION_DISPLAYED_NAME_GUEST_NETWORK, coordinator.primary_router_name
@@ -494,7 +479,7 @@ class HuaweiDeviceAccessSwitch(HuaweiSwitch):
         device: ConnectedDevice,
     ) -> None:
         """Initialize."""
-        super().__init__(coordinator, SWITCH_DEVICE_ACCESS, device.mac)
+        super().__init__(coordinator, EmulatedSwitch.DEVICE_ACCESS, device.mac)
         self._attr_device_info = None
 
         self._attr_name = generate_entity_name(
@@ -514,7 +499,7 @@ class HuaweiDeviceAccessSwitch(HuaweiSwitch):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if not self.coordinator.get_switch_state(SWITCH_WLAN_FILTER):
+        if not self.coordinator.get_switch_state(Switch.WLAN_FILTER):
             return False
         return self.coordinator.is_router_online() and self.is_on is not None
 
@@ -532,7 +517,7 @@ class HuaweiUrlFilterSwitch(HuaweiSwitch):
         self._filter_info = filter_info
         self._attr_extra_state_attributes = {}
         super().__init__(
-            coordinator, SWITCH_URL_FILTER, switch_id=filter_info.filter_id
+            coordinator, EmulatedSwitch.URL_FILTER, switch_id=filter_info.filter_id
         )
         self._attr_device_info = None
 
