@@ -120,15 +120,15 @@
     "selector": {
         "wifi_duration": {
             "options": {
-                "4 hours": "4 hours",
-                "1 day": "1 day",
-                "Unlimited": "Unlimited"
+                "four_hours": "4 hours",
+                "one_day": "1 day",
+                "unlimited": "Unlimited"
             }
         },
         "wifi_security": {
             "options": {
-                "Encrypted": "Encrypted",
-                "Open": "Open"
+                "encrypted": "Encrypted",
+                "open": "Open"
             }
         }
     }

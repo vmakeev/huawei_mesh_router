@@ -51,25 +51,25 @@ guest_network_setup:
         text:
     duration:
       required: true
-      example: "4 hours"
-      default: "4 hours"
+      example: "four_hours"
+      default: "four_hours"
       selector:
         select:
           translation_key: "wifi_duration"
           options:
-            - "4 hours"
-            - "1 day"
-            - "Unlimited"
+            - "four_hours"
+            - "one_day"
+            - "unlimited"
     security:
       required: true
-      example: "Encrypted"
-      default: "Encrypted"
+      example: "encrypted"
+      default: "encrypted"
       selector:
         select:
           translation_key: "wifi_security"
           options:
-            - "Encrypted"
-            - "Open"
+            - "encrypted"
+            - "open"
     password:
       required: true
       example: "K3k*eJWtFv!~ME4}"

@@ -120,15 +120,15 @@
     "selector": {
         "wifi_duration": {
             "options": {
-                "4 hours": "4 часа",
-                "1 day": "1 день",
-                "Unlimited": "Без ограничений"
+                "four_hours": "4 часа",
+                "one_day": "1 день",
+                "unlimited": "Без ограничений"
             }
         },
         "wifi_security": {
             "options": {
-                "Encrypted": "Использовать шифрование",
-                "Open": "Открытая сеть"
+                "encrypted": "Использовать шифрование",
+                "open": "Открытая сеть"
             }
         }
     }
