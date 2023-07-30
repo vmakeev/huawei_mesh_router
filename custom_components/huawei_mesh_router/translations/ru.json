@@ -44,5 +44,92 @@
                 "description": "Расширенная функциональность"
             }
         }
+    },
+    "services": {
+        "whitelist_add": {
+            "name": "Добавить в белый список",
+            "description": "Добавить выбранное устройство в белый список Wi-Fi.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC-адрес",
+                    "description": "MAC-адрес устройства, подключенного через Wi-Fi."
+                }
+            }
+        },
+        "blacklist_add": {
+            "name": "Добавить в черный список",
+            "description": "Добавить выбранное устройство в черный список Wi-Fi.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC-адрес",
+                    "description": "MAC-адрес устройства, подключенного через Wi-Fi."
+                }
+            }
+        },
+        "whitelist_remove": {
+            "name": "Убрать из белого списка",
+            "description": "Убрать выбранное устройство из белого списка Wi-Fi.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC-адрес",
+                    "description": "MAC-адрес устройства, подключенного через Wi-Fi."
+                }
+            }
+        },
+        "blacklist_remove": {
+            "name": "Убрать из черного списка",
+            "description": "Убрать выбранное устройство из черного списка Wi-Fi.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC-адрес",
+                    "description": "MAC-адрес устройства, подключенного через Wi-Fi."
+                }
+            }
+        },
+        "guest_network_setup":{
+            "name": "Настроить гостевую сеть",
+            "description": "Настроить параметры гостевой сети Wi-Fi.",
+            "fields": {
+                "serial_number": {
+                    "name": "Серийный номер роутера",
+                    "description": "Серийный номер основного роутера."
+                },
+                "enabled": {
+                    "name": "Включить гостевую сеть",
+                    "description": "Включить или выключить гостевую сеть Wi-Fi."
+                },
+                "ssid": {
+                    "name": "Имя сети",
+                    "description": "Имя гостевой Wi-Fi сети."
+                },
+                "duration": {
+                    "name": "Время действия",
+                    "description": "Время, в течение которого гостевая сеть будет доступна."
+                },
+                "security": {
+                    "name": "Безопасность",
+                    "description": "Безопасность гостевой сети."
+                },
+                "password": {
+                    "name": "Пароль",
+                    "description": "Пароль для доступа к сети."
+                }
+            }
+        }
+    },
+    "selector": {
+        "wifi_duration": {
+            "options": {
+                "four_hours": "4 часа",
+                "one_day": "1 день",
+                "unlimited": "Без ограничений"
+            }
+        },
+        "wifi_security": {
+            "options": {
+                "encrypted": "Использовать шифрование",
+                "open": "Открытая сеть"
+            }
+        }
     }
 }

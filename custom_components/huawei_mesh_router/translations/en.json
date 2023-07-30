@@ -44,5 +44,92 @@
                 "description": "Additional features"
             }
         }
+    },
+    "services": {
+        "whitelist_add": {
+            "name": "Add to whitelist",
+            "description": "Add the specified device to the router's Wi-Fi whitelist.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC Address",
+                    "description": "The MAC address of wireless connected device."
+                }
+            }
+        },
+        "blacklist_add": {
+            "name": "Add to blacklist",
+            "description": "Add the specified device to the router's Wi-Fi blacklist.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC Address",
+                    "description": "The MAC address of wireless connected device."
+                }
+            }
+        },
+        "whitelist_remove": {
+            "name": "Remove from whitelist",
+            "description": "Remove the specified device from the router's Wi-Fi whitelist.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC Address",
+                    "description": "The MAC address of wireless connected device."
+                }
+            }
+        },
+        "blacklist_remove": {
+            "name": "Remove from blacklist",
+            "description": "Remove the specified device from the router's Wi-Fi blacklist.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC Address",
+                    "description": "The MAC address of wireless connected device."
+                }
+            }
+        },
+        "guest_network_setup":{
+            "name": "Set up a guest network",
+            "description": "Configure the parameters of the guest Wi-Fi network.",
+            "fields": {
+                "serial_number": {
+                    "name": "Router serial number",
+                    "description": "Serial number of the primary router."
+                },
+                "enabled": {
+                    "name": "Enable guest network",
+                    "description": "Enable or disable guest Wi-Fi network."
+                },
+                "ssid": {
+                    "name": "Wi-Fi name",
+                    "description": "Name of the guest Wi-Fi network."
+                },
+                "duration": {
+                    "name": "Access duration",
+                    "description": "Duration of access to the guest Wi-Fi network"
+                },
+                "security": {
+                    "name": "Security",
+                    "description": "Guest Wi-Fi network security."
+                },
+                "password": {
+                    "name": "Wi-Fi password",
+                    "description": "Password to access the guest Wi-Fi network."
+                }
+            }
+        }
+    },
+    "selector": {
+        "wifi_duration": {
+            "options": {
+                "four_hours": "4 hours",
+                "one_day": "1 day",
+                "unlimited": "Unlimited"
+            }
+        },
+        "wifi_security": {
+            "options": {
+                "encrypted": "Encrypted",
+                "open": "Open"
+            }
+        }
     }
 }
