@@ -68,7 +68,7 @@ By default, Huawei mesh routers use the username `admin`, although it is not dis
 ### Advanced options
 
 You can perform advanced configuration of the component after adding it. 
-To do this, click on the gear, and in the tab that opens, click `CONFIGURE`
+To do this, click on the intergation, and in the tab that opens, click `CONFIGURE`
 
 ![Integration](docs/images/integration.png)
 
@@ -84,6 +84,7 @@ Advanced settings include:
 | Enabling or disabling [Devices tracking](docs/device-tracking.md#devices-tracking)                               |  Disabled  |
 | Enabling or disabling [Router-specific zones](docs/device-tracking.md#router-specific-zones)                     |  Disabled  |
 | Enabling or disabling [Website filtering switches](docs/controls.md#website-filtering)                           |  Disabled  |
+| Enabling or disabling [Event entities](docs/events.md#event-entities)                                            |  Disabled  |
 
 
 ![Options 1/2](docs/images/options_1.png)
