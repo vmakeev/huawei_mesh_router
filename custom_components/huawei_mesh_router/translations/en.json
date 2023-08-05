@@ -15,7 +15,7 @@
             }
         },
         "error": {
-            "name_exists": "The name already used.",
+            "name_exists": "This name is already used.",
             "auth_general": "Can not authenticate.",
             "auth_invalid_csrf": "CSRF error, try again.",
             "auth_too_many_users": "Too many users, wait some time before retry.",
