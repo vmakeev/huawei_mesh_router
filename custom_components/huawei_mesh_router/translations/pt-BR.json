@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "user": {
-                "description": "Configurações dos roteadore mesh Huawei.",
+                "description": "Configuração do roteador mesh Huawei.",
                 "data": {
                     "name": "Nome da integração",
                     "host": "Host",
@@ -40,7 +40,7 @@
                     "device_tracker_zones": "Zonas específicas do roteador para dispositivos rastreados",
                     "url_filter_switches": "Interruptores de filtragem de sites"
                 },
-                "title": "Configuração do roteadore mesh Huawei (2\/2)",
+                "title": "Configuração do roteador mesh Huawei (2\/2)",
                 "description": "Características adicionais"
             }
         }
