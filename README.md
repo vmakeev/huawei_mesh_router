@@ -30,6 +30,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 - control of the Fast Roaming function (802.11r)
 - control of the Target Wake Time (reduce power consumption of Wi-Fi 6 devices in sleep mode)
 - reboot buttons
+- events for connecting, disconnecting, or moving devices over a mesh network
 - automatic detection of available functions
 
 ## Supported models
@@ -87,7 +88,11 @@ Advanced settings include:
 
 ![Options 1/2](docs/images/options_1.png)
 
+*Note: click `SUBMIT` to go to the next page*
+
 ![Options 2/2](docs/images/options_2.png)
+
+*Note: click `SUBMIT` to save the changes and complete the setup*
 
 
 ## Devices tracking
@@ -129,3 +134,18 @@ You can attach one or more tags to each client device in order to be able to use
 * Remove device from the whitelist ([read more](docs/services.md#remove-device-from-the-whitelist))
 * Remove device from the blacklist ([read more](docs/services.md#remove-device-from-the-blacklist))
 * Configure the parameters of the guest Wi-Fi network ([read more](docs/services.md#set-up-a-guest-network))
+
+## Events
+
+### Regular events
+
+* The dependent router has connected to the mesh network ([read more](docs/events.md#the-dependent-router-has-connected-to-the-mesh-network))
+* The dependent router disconnected from the mesh network ([read more](docs/events.md#the-dependent-router-disconnected-from-the-mesh-network))
+* The device has connected to the mesh network ([read more](docs/events.md#the-device-has-connected-to-the-mesh-network))
+* The device disconnected from the mesh network ([read more](docs/events.md#the-device-disconnected-from-the-mesh-network))
+* The device has changed the router within the mesh network ([read more](docs/events.md#the-device-has-changed-the-router-within-the-mesh-network))
+
+### Events as entities
+
+* Router events ([read more](docs/events.md#routers))
+* Device events ([read more](docs/events.md#devices))

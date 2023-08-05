@@ -17,7 +17,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant, callback, CALLBACK_TYPE
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_registry import EntityRegistry
@@ -27,6 +27,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .classes import (
     ConnectedDevice,
     EmulatedSwitch,
+    HuaweiEvents,
     HuaweiInterfaceType,
     HuaweiWlanFilterMode,
     Select,
@@ -219,10 +220,13 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         zones_map_storage: Store | None,
     ) -> None:
         """Initialize HuaweiController."""
+        self._is_initial_update: bool = True
         self._logger = logging.getLogger(f"{__name__} ({config_entry.data[CONF_NAME]})")
-        self._is_unloaded = False
-        self._is_repeater = False
-        self._integration_options = integration_options
+        self._is_unloaded: bool = False
+        self._is_repeater: bool = False
+        self._integration_options: HuaweiIntegrationOptions = integration_options
+
+        self._events: HuaweiEvents = HuaweiEvents(hass)
 
         self._tags_map: TagsMap | None = (
             TagsMap(tags_map_storage, self._logger)
@@ -327,6 +331,11 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
     def primary_router_api(self) -> HuaweiApi:
         return self._select_api(None)
 
+    @property
+    def primary_router_serial_number(self) -> str | None:
+        info = self.get_router_info()
+        return info.serial_number if info else None
+
     def is_router_online(self, device_mac: MAC_ADDR | None = None) -> bool:
         return self._apis.get(device_mac or _PRIMARY_ROUTER_IDENTITY) is not None
 
@@ -394,6 +403,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_switches()
         await self._update_selects()
         self._logger.debug("Update completed")
+        self._is_initial_update = False
 
     @suppress_update_exception("Can not update repeater state %s")
     async def _update_repeater_state(self) -> None:
@@ -484,13 +494,29 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 self._apis[device_mac] = router_api
 
+                if not self._is_initial_update:
+                    self._events.fire_router_added(
+                        self.primary_router_serial_number,
+                        device_mac,
+                        router.ip_address,
+                        router.name,
+                    )
+
         @callback
-        def on_router_removed(_, device_mac: MAC_ADDR, __) -> None:
+        def on_router_removed(_, device_mac: MAC_ADDR, router: ConnectedDevice) -> None:
             """When a known mesh router becomes unavailable."""
             self._logger.debug("Router '%s' disconnected", device_mac)
             router_api = self._apis.pop(device_mac, None)
             if router_api:
                 self._safe_disconnect(router_api)
+
+            if not self._is_initial_update:
+                self._events.fire_router_removed(
+                    self.primary_router_serial_number,
+                    device_mac,
+                    router.ip_address,
+                    router.name,
+                )
 
         self._logger.debug("Updating apis")
         self._routersWatcher.look_for_changes(on_router_added, on_router_removed)
@@ -693,7 +719,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
         if await self.primary_router_api.is_feature_available(Feature.URL_FILTER):
             for item in self._url_filters.values():
-                states[f"{Switch.URL_FILTER}_{item.filter_id}"] = item.enabled
+                states[f"{EmulatedSwitch.URL_FILTER}_{item.filter_id}"] = item.enabled
                 self._logger.debug(
                     "URL filter switch (%s) state updated to %s",
                     item.filter_id,
@@ -767,10 +793,17 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
         for device_data in devices_data:
             mac: MAC_ADDR = device_data.mac_address
+            ip_address: str = device_data.ip_address
             host_name: str = device_data.host_name or f"device_{mac}"
             name: str = device_data.actual_name or host_name
             is_active: bool = device_data.is_active
             filter_mode = devices_to_filters.get(mac)
+
+            # if nothing is found in the devices_to_routers, then the device is connected to the primary router
+            connected_via = devices_to_routers.get(
+                mac,
+                {"name": self.primary_router_name, "id": CONNECTED_VIA_ID_PRIMARY},
+            )
 
             tags = (
                 self._tags_map.get_tags(mac)
@@ -785,13 +818,39 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     name, host_name, mac, is_active, tags, filter_mode
                 )
                 self._connected_devices[device.mac] = device
+                # new device = fire an event immediately
+                if not self._is_initial_update:
+                    self._events.fire_device_connected(
+                        self.primary_router_serial_number,
+                        mac,
+                        ip_address,
+                        name,
+                        connected_via.get("id"),
+                        connected_via.get("name")
+                    )
+
+            # if state of the device is changed then firing an event
+            if not self._is_initial_update and device.is_active != is_active:
+                if is_active:
+                    self._events.fire_device_connected(
+                        self.primary_router_serial_number,
+                        mac,
+                        ip_address,
+                        name,
+                        connected_via.get("id"),
+                        connected_via.get("name")
+                    )
+                else:
+                    self._events.fire_device_disconnected(
+                        self.primary_router_serial_number,
+                        mac,
+                        ip_address,
+                        name,
+                        device.connected_via_id,
+                        device.connected_via_name
+                    )
 
             if is_active:
-                """if nothing is found in the devices_to_routers, then the device is connected to the primary router"""
-                connected_via = devices_to_routers.get(
-                    mac,
-                    {"name": self.primary_router_name, "id": CONNECTED_VIA_ID_PRIMARY},
-                )
 
                 zone_id = None
 
@@ -816,6 +875,22 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     else None
                 )
 
+                if not self._is_initial_update:
+                    if (
+                        device.connected_via_id
+                        and device.connected_via_id != connected_via.get("id")
+                    ):
+                        self._events.fire_device_changed_router(
+                            self.primary_router_serial_number,
+                            mac,
+                            ip_address,
+                            name,
+                            device.connected_via_id,
+                            device.connected_via_name,
+                            connected_via.get("id"),
+                            connected_via.get("name"),
+                        )
+
                 device.update_device_data(
                     name,
                     host_name,
@@ -823,7 +898,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     tags,
                     filter_mode,
                     connected_via=connected_via.get("name"),
-                    ip_address=device_data.ip_address,
+                    ip_address=ip_address,
                     interface_type=device_data.interface_type,
                     rssi=device_data.rssi,
                     is_guest=device_data.is_guest,
@@ -963,3 +1038,12 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         """Perform the specified action."""
         api = self._select_api(device_mac)
         await api.execute_action(action)
+
+    # ---------------------------
+    #   async_subscribe_event
+    # ---------------------------
+    @callback
+    def async_subscribe_event(
+        self, event_types: list[str], handle_callback: CALLBACK_TYPE
+    ) -> Callable[[], None]:
+        return self._events.async_subscribe_event(event_types, handle_callback)

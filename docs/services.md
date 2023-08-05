@@ -77,8 +77,8 @@ data:
   serial_number: ABC123456789
   enabled: true
   ssid: MyGuestWiFi
-  duration: 4 hours
-  security: Encrypted
+  duration: four_hours
+  security: encrypted
   password: K3k*eJWtFv!~ME4}
 
 ```

@@ -42,4 +42,5 @@ PLATFORMS: Final = [
     Platform.BUTTON,
     Platform.BINARY_SENSOR,
     Platform.SELECT,
+    Platform.EVENT
 ]
