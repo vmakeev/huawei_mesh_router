@@ -86,7 +86,7 @@
                 }
             }
         },
-        "guest_network_setup":{
+        "guest_network_setup": {
             "name": "Настроить гостевую сеть",
             "description": "Настроить параметры гостевой сети Wi-Fi.",
             "fields": {

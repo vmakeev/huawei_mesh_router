@@ -101,8 +101,8 @@ def get_past_moment(offset_seconds: int) -> datetime:
 # ---------------------------
 #   generate_entity_name
 # ---------------------------
-def generate_entity_name(function_displayed_name: str, device_name: str) -> str:
-    return f"{device_name} {function_displayed_name}"
+def generate_entity_name(function_displayed_name: str, device_name: str | None = None) -> str:
+    return f"{device_name} {function_displayed_name}" if device_name else function_displayed_name
 
 
 # ---------------------------

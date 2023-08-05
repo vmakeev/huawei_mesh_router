@@ -35,17 +35,15 @@ _FIELD_PASSWORD: Final = "password"
 
 _CV_MAC_ADDR: Final = cv.matches_regex("^([A-Fa-f0-9]{2}\\:){5}[A-Fa-f0-9]{2}$")
 
-_CV_SSID: Final = cv.matches_regex("^([A-Fa-f0-9]{2}\\:){5}[A-Fa-f0-9]{2}$")
-
 _WIFI_DURATION_MAP: dict[str, HuaweiGuestNetworkDuration] = {
-    "4 hours": HuaweiGuestNetworkDuration.FOUR_HOURS,
-    "1 day": HuaweiGuestNetworkDuration.ONE_DAY,
-    "Unlimited": HuaweiGuestNetworkDuration.UNLIMITED,
+    "four_hours": HuaweiGuestNetworkDuration.FOUR_HOURS,
+    "one_day": HuaweiGuestNetworkDuration.ONE_DAY,
+    "unlimited": HuaweiGuestNetworkDuration.UNLIMITED,
 }
 
 _WIFI_SECURITY_MAP: dict[str, bool] = {
-    "Encrypted": True,
-    "Open": False,
+    "encrypted": True,
+    "open": False,
 }
 
 
@@ -139,7 +137,7 @@ def _find_coordinator_serial(
         coordinator = item.get(DATA_KEY_COORDINATOR)
         if not coordinator or not isinstance(coordinator, HuaweiDataUpdateCoordinator):
             continue
-        if coordinator.get_router_info().serial_number.upper() == serial_number.upper():
+        if coordinator.primary_router_serial_number == serial_number.upper():
             _LOGGER.debug(
                 "Found coordinator %s with serial number '%s'",
                 coordinator.name,
@@ -275,7 +273,7 @@ async def _async_setup_guest_network(hass: HomeAssistant, service: ServiceCall):
     coordinator = _find_coordinator_serial(hass, serial_number)
     if not coordinator:
         raise HomeAssistantError(
-            f"Can not find coordinator with serial number '{serial_number}'"
+            f"Can not find coordinator with primary router's serial number '{serial_number}'"
         )
 
     _LOGGER.debug(
