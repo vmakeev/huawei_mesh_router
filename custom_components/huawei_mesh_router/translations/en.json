@@ -38,7 +38,8 @@
                     "devices_tags": "Device tags",
                     "device_tracker": "Devices tracking",
                     "device_tracker_zones": "Router-specific zones for tracked devices",
-                    "url_filter_switches": "Website filtering switches"
+                    "url_filter_switches": "Website filtering switches",
+                    "event_entities": "Event entities"
                 },
                 "title": "Huawei mesh router setup (2\/2)",
                 "description": "Additional features"

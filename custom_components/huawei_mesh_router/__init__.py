@@ -14,10 +14,12 @@ from .const import (
     DEFAULT_DEVICE_TRACKER_ZONES,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_URL_FILTER_SWITCHES,
+    DEFAULT_EVENT_ENTITIES,
     DOMAIN,
     OPT_DEVICE_TRACKER,
     OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
+    OPT_EVENT_ENTITIES,
     OPT_ROUTER_CLIENTS_SENSORS,
     OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
@@ -47,6 +49,9 @@ def _get_platforms(integration_options: HuaweiIntegrationOptions) -> Iterable[st
 
     if not integration_options.device_tracker:
         excluded_platforms.append(Platform.DEVICE_TRACKER)
+
+    if not integration_options.event_entities:
+        excluded_platforms.append(Platform.EVENT)
 
     return filter(lambda item: item not in excluded_platforms, PLATFORMS)
 
@@ -164,6 +169,11 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
         _LOGGER.debug("Migrating to version 4")
         updated_options[OPT_URL_FILTER_SWITCHES] = DEFAULT_URL_FILTER_SWITCHES
         config_entry.version = 4
+
+    if config_entry.version == 4:
+        _LOGGER.debug("Migrating to version 5")
+        updated_options[OPT_EVENT_ENTITIES] = DEFAULT_EVENT_ENTITIES
+        config_entry.version = 5
 
     hass.config_entries.async_update_entry(
         config_entry, data=updated_data, options=updated_options

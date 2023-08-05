@@ -155,6 +155,8 @@ context:
 
 The integration also supports displaying events as entities. 
 
+These entities will not be added if `event entities` are not enabled in [advanced options](../README.md#advanced-options).
+
 Primary router have the following event entities:
 * `event.<integration_name>_routers`
 * `event.<integration_name>_devices`
