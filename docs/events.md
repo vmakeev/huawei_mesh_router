@@ -155,7 +155,9 @@ context:
 
 The integration also supports displaying events as entities. 
 
-Each type of event is represented as a separate entity with the name `event.<integration_name>_<event_group>`.
+Primary router have the following event entities:
+* `event.<integration_name>_routers`
+* `event.<integration_name>_devices`
 
 ![Event entities](images/event_entities.png)
 
@@ -163,10 +165,14 @@ Each type of event is represented as a separate entity with the name `event.<int
 
 Displays events of type `huawei_mesh_router_event` with subtypes `added` and `removed`
 
+Entity id is `event.<integration_name>_routers`
+
 ![Event entities](images/event_entity_routers.png)
 
 ## Devices
 
-Displays events of type `huawei_mesh_router_device_event` with subtypes `connected`, `disconnected` and `changed_router`
+Displays events of type `huawei_mesh_router_device_event` with subtypes `connected`, `disconnected` and `changed_router`. 
+
+Entity id is `event.<integration_name>_devices`
 
 ![Event entities](images/event_entity_devices.png)

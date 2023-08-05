@@ -22,9 +22,10 @@ _EVENT_DISPLAYED_NAME_ROUTER: Final = "Routers"
 _EVENT_UID_ROUTER: Final = "routers"
 
 _EVENT_DISPLAYED_NAME_DEVICE: Final = "Devices"
-_EVENT_UID_DEVICE_CONNECTED: Final = "devices"
+_EVENT_UID_DEVICE: Final = "devices"
 
 ENTITY_DOMAIN: Final = "event"
+
 
 async def async_setup_entry(
         hass: HomeAssistant,
@@ -48,10 +49,13 @@ async def async_setup_entry(
         HuaweiEvent(
             coordinator,
             HuaweiEventEntityDescription(
-                key=_EVENT_UID_DEVICE_CONNECTED,
-                event_types=[EventTypes.DEVICE_CONNECTED, EventTypes.DEVICE_DISCONNECTED, EventTypes.DEVICE_CHANGED_ROUTER],
+                key=_EVENT_UID_DEVICE,
+                event_types=[
+                    EventTypes.DEVICE_CONNECTED, EventTypes.DEVICE_DISCONNECTED,
+                    EventTypes.DEVICE_CHANGED_ROUTER,
+                ],
                 name=generate_entity_name(_EVENT_DISPLAYED_NAME_DEVICE),
-                event_uid=_EVENT_UID_DEVICE_CONNECTED,
+                event_uid=_EVENT_UID_DEVICE,
                 event_name=_EVENT_DISPLAYED_NAME_DEVICE,
             )
         ),
@@ -88,7 +92,7 @@ class HuaweiEvent(EventEntity):
 
     @callback
     def _async_handle_event(self, event: str, data: dict[str, Any]) -> None:
-        """Handle the demo button event."""
+        """Handle the event."""
         self._trigger_event(event, data)
         self.async_write_ha_state()
 
