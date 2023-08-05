@@ -86,7 +86,7 @@
                 }
             }
         },
-        "guest_network_setup":{
+        "guest_network_setup": {
             "name": "Set up a guest network",
             "description": "Configure the parameters of the guest Wi-Fi network.",
             "fields": {
@@ -104,7 +104,7 @@
                 },
                 "duration": {
                     "name": "Access duration",
-                    "description": "Duration of access to the guest Wi-Fi network"
+                    "description": "Duration of access to the guest Wi-Fi network."
                 },
                 "security": {
                     "name": "Security",
