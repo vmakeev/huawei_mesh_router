@@ -2,7 +2,7 @@
 
 ## The optimal way
 
-To add support for a new language, first of all you need to create a [fork of the project](vmakeev/huawei_mesh_router).
+To add support for a new language, first of all you need to create a [fork of the project](https://github.com/vmakeev/huawei_mesh_router/fork).
 
 Next, create a copy of the file [`custom_components/huawei_mesh_router/translations/en.json`](../custom_components/huawei_mesh_router/translations/en.json) and give it a name `<your_language_code>.json`. The new file should also be located in the [`custom_components/huawei_mesh_router/translations/`](../custom_components/huawei_mesh_router/translations/) folder. After that, translate all the values in the json file into your language.
 
