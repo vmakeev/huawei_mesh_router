@@ -2,13 +2,19 @@
 
 Home Assistant custom component for control Huawei mesh routers over LAN.
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
+[![Hacs Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/github/license/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/blob/master/LICENSE.md)
 ![Active installatons](https://img.shields.io/badge/dynamic/json?color=blue&label=active%20installations&query=$[%27huawei_mesh_router%27][%27total%27]&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&cacheSeconds=600)
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 ![Maintained](https://img.shields.io/maintenance/yes/2023)
+
+[![Localization contribute](https://img.shields.io/badge/localization-contrubute-blue)](docs/localization.md)
+
+[![Russian](docs/images/flags/ru.png)](custom_components/huawei_mesh_router/translations/ru.json)
+[![English](docs/images/flags/gb.png)](custom_components/huawei_mesh_router/translations/en.json)
+[![Brazilian Portuguese](docs/images/flags/br.png)](custom_components/huawei_mesh_router/translations/pt-BR.json)
 
 ## Key features
 
@@ -42,7 +48,17 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 | [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     |                                             |
 | [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | My router model. All features are available |
 | [Huawei WiFi Mesh 7](https://consumer.huawei.com/en/routers/wifi-mesh7/)           | WS8800 |    Yes    |                                             |
-| Other routers with HarmonyOS                                                       | ------ |    No     | Will most likely work                       |             
+
+
+## Not supported models
+
+|                                        Name                                        |  Model |                     Notes                     |
+|------------------------------------------------------------------------------------|--------|-----------------------------------------------|
+| [Huawei Q2S](https://consumer.huawei.com/cn/support/routers/ws5280/)               | WS5281 | The router blocks requests from the component |
+| [Huawei Q2 Pro](https://consumer.huawei.com/cn/support/routers/q2-pro-2pack/)      | WS5280 | The router blocks requests from the component |
+| [Huawei Q6](https://consumer.huawei.com/cn/support/routers/q6/)                    | WS7290 | The router blocks requests from the component |
+
+As far as I can understand, problems arise with routers designed for the domestic market of China. Unfortunately, I do not have such devices available so that I can try to find out the reasons for this behavior.
 
 ## Installation
 
