@@ -1,0 +1,136 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Configuración del WiFi Mesh de Huawei.",
+                "data": {
+                    "name": "Nombre de la integración",
+                    "host": "Host",
+                    "port": "Puerto",
+                    "username": "Nombre de usuario",
+                    "password": "Contraseña",
+                    "ssl": "Usa SSL",
+                    "verify_ssl": "Verificar el cerfiticado SSL"
+                }
+            }
+        },
+        "error": {
+            "name_exists": "Este nombre ya está siendo utilizado.",
+            "auth_general": "No se puede autenticar.",
+            "auth_invalid_csrf": "error CSRF, intenta denuevo.",
+            "auth_too_many_users": "Demasiado usuarios, espera un momento antes de volver a intentar.",
+            "auth_invalid_credentials": "Nombre de usuario o contraseña incorrectos"
+        }
+    },
+    "options": {
+        "step": {
+            "basic_options": {
+                "data": {
+                    "scan_interval": "Intervalo de actualización"
+                },
+                "title": "Configuración del WiFi Mesh de Huawei (1\/2)",
+                "description": "Opciones Básicas"
+            },
+            "features_select": {
+                "data": {
+                    "wifi_access_switches": "Switches de acceso Wi-Fi por dispositivo",
+                    "router_clients_sensors": "Número de dispositivos conectados por router",
+                    "devices_tags": "Tags de dispositivos",
+                    "device_tracker": "Rastreador de dispositivos",
+                    "device_tracker_zones": "Zonas para rastrear dispositivos por router",
+                    "url_filter_switches": "Switches para filtrado de Sitios Web",
+                    "event_entities": "Entidades de eventos"
+                },
+                "title": "Configuración del WiFi Mesh de Huawei (2\/2)",
+                "description": "Características Adicionales"
+            }
+        }
+    },
+    "services": {
+        "whitelist_add": {
+            "name": "Añadir a la lista blanca",
+            "description": "Añadir un dispositivo específico a la lista blanca del Router Wifi.",
+            "fields": {
+                "mac_address": {
+                    "name": "Dirección MAC",
+                    "description": "La dirección MAC del dispositivo inhalámbrico conectado."
+                }
+            }
+        },
+        "blacklist_add": {
+            "name": "Añadir a la lista negra",
+            "description": "Añadir un dispositivo específico a la lista negra del Router Wifi.",
+            "fields": {
+                "mac_address": {
+                    "name": "Dirección MAC",
+                    "description": "La dirección MAC del dispositivo inhalámbrico conectado."
+                }
+            }
+        },
+        "whitelist_remove": {
+            "name": "Eliminar de la lista blanca",
+            "description": "Eliminar un dispositivo específico de la lista blanca del Router Wifi",
+            "fields": {
+                "mac_address": {
+                    "name": "Dirección MAC",
+                    "description": "La dirección MAC del dispositivo inhalámbrico conectado."
+                }
+            }
+        },
+        "blacklist_remove": {
+            "name": "Eliminar de la lista negra",
+            "description": "Eliminar un dispositivo específico de la lista negra del Router Wifi.",
+            "fields": {
+                "mac_address": {
+                    "name": "Dirección MAC",
+                    "description": "La dirección MAC del dispositivo inhalámbrico conectado."
+                }
+            }
+        },
+        "guest_network_setup": {
+            "name": "Configurar una red Wifi para invitados",
+            "description": "Configuración de parámetros para la red Wifi para invitados.",
+            "fields": {
+                "serial_number": {
+                    "name": "Número de serie del router",
+                    "description": "Número de serie del router principal"
+                },
+                "enabled": {
+                    "name": "Habilitar red Wifi para invitados",
+                    "description": "Habilita o deshabilita la red Wifi para invitados."
+                },
+                "ssid": {
+                    "name": "Nombre Wi-Fi",
+                    "description": "Nombre de la red Wifi para invitados."
+                },
+                "duration": {
+                    "name": "Duración del acceso",
+                    "description": "Duración del acceso a la red Wifi para invitados."
+                },
+                "security": {
+                    "name": "Seguridad",
+                    "description": "Seguridad para la red Wifi para invitados."
+                },
+                "password": {
+                    "name": "Contraseña Wi-Fi",
+                    "description": "Contraseña para acceder a la red Wifi para invitados."
+                }
+            }
+        }
+    },
+    "selector": {
+        "wifi_duration": {
+            "options": {
+                "four_hours": "4 horas",
+                "one_day": "1 día",
+                "unlimited": "Ilimitado"
+            }
+        },
+        "wifi_security": {
+            "options": {
+                "encrypted": "Encriptado",
+                "open": "Abierto"
+            }
+        }
+    }
+}
