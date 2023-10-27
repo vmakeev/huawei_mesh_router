@@ -49,6 +49,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 | [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     |                                             |
 | [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | My router model. All features are available |
 | [Huawei WiFi Mesh 7](https://consumer.huawei.com/en/routers/wifi-mesh7/)           | WS8800 |    Yes    |                                             |
+| Other Huawei routers based on HarmonyOS (except Chinese domestic market)           |   ---  |    ---    | Most likely they will work                  |
 
 
 ## Not supported models
@@ -81,6 +82,10 @@ Or simply click the button below:
 Configuration > [Integrations](https://my.home-assistant.io/redirect/integrations/) > Add Integration > [Huawei Mesh Router](https://my.home-assistant.io/redirect/config_flow_start/?domain=huawei_mesh_router)
 
 By default, Huawei mesh routers use the username `admin`, although it is not displayed in the web interface and mobile applications.
+
+## Troubleshooting
+
+If the component does not work, or does not work correctly, try to go to the [troubleshooting section](docs/troubleshooting/troubleshooting.md)
 
 ### Advanced options
 
