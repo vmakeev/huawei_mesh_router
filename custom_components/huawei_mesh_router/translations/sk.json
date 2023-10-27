@@ -1,0 +1,136 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Huawei mesh router nastavenie.",
+                "data": {
+                    "name": "Názov integrácie",
+                    "host": "Host",
+                    "port": "Port",
+                    "username": "Užívateľské meno",
+                    "password": "Heslo",
+                    "ssl": "Použiť SSL",
+                    "verify_ssl": "Overiť SSL cert"
+                }
+            }
+        },
+        "error": {
+            "name_exists": "Tento názov sa už používa.",
+            "auth_general": "Nedá sa overiť.",
+            "auth_invalid_csrf": "Chyba CSRF, skúste to znova.",
+            "auth_too_many_users": "Príliš veľa používateľov, počkajte nejaký čas a skúste to znova.",
+            "auth_invalid_credentials": "Nesprávne užívateľské meno alebo heslo."
+        }
+    },
+    "options": {
+        "step": {
+            "basic_options": {
+                "data": {
+                    "scan_interval": "Interval aktualizácie"
+                },
+                "title": "Nastavenie sieťového smerovača Huawei (1\/2)",
+                "description": "Základné možnosti"
+            },
+            "features_select": {
+                "data": {
+                    "wifi_access_switches": "Prístupové prepínače Wi-Fi zariadenia",
+                    "router_clients_sensors": "Počet pripojených zariadení pre každý smerovač",
+                    "devices_tags": "Štítky zariadení",
+                    "device_tracker": "Sledovanie zariadení",
+                    "device_tracker_zones": "Zóny špecifické pre smerovač pre sledované zariadenia",
+                    "url_filter_switches": "Prepínače filtrovania webových stránok",
+                    "event_entities": "Subjekty udalostí"
+                },
+                "title": "Huawei mesh router nastavenie (2\/2)",
+                "description": "Pridané vlastnosti"
+            }
+        }
+    },
+    "services": {
+        "whitelist_add": {
+            "name": "Pridať na bielu listinu",
+            "description": "Pridajte určené zariadenie do zoznamu povolených sietí Wi-Fi smerovača.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC adresa",
+                    "description": "MAC adresa bezdrôtovo pripojeného zariadenia."
+                }
+            }
+        },
+        "blacklist_add": {
+            "name": "Pridať na čiernu listinu",
+            "description": "Pridajte určené zariadenie na čiernu listinu Wi-Fi smerovača.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC adresa",
+                    "description": "MAC adresa bezdrôtovo pripojeného zariadenia."
+                }
+            }
+        },
+        "whitelist_remove": {
+            "name": "Odstrániť z bielej listiny",
+            "description": "Odstráňte zadané zariadenie z bieleho zoznamu Wi-Fi smerovača.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC adresa",
+                    "description": "MAC adresa bezdrôtovo pripojeného zariadenia."
+                }
+            }
+        },
+        "blacklist_remove": {
+            "name": "Odstrániť z čiernej listiny",
+            "description": "Odstráňte zadané zariadenie z čiernej listiny Wi-Fi smerovača.",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC addresa",
+                    "description": "MAC adresa bezdrôtovo pripojeného zariadenia."
+                }
+            }
+        },
+        "guest_network_setup": {
+            "name": "Nastavte hosťovskú sieť",
+            "description": "Nakonfigurujte parametre hosťovskej siete Wi-Fi.",
+            "fields": {
+                "serial_number": {
+                    "name": "Sériové číslo router",
+                    "description": "Sériové číslo primárneho routra."
+                },
+                "enabled": {
+                    "name": "Povoliť sieť pre hostí",
+                    "description": "Povoliť alebo zakázať hosťovskú sieť Wi-Fi."
+                },
+                "ssid": {
+                    "name": "Wi-Fi názov",
+                    "description": "Názov hosťujúcej siete Wi-Fi."
+                },
+                "duration": {
+                    "name": "Trvanie prístupu",
+                    "description": "Trvanie prístupu k hosťovskej sieti Wi-Fi."
+                },
+                "security": {
+                    "name": "Bezpečnosť",
+                    "description": "Zabezpečenie hosťovskej Wi-Fi siete."
+                },
+                "password": {
+                    "name": "Wi-Fi heslo",
+                    "description": "Heslo na prístup k hosťovskej sieti Wi-Fi."
+                }
+            }
+        }
+    },
+    "selector": {
+        "wifi_duration": {
+            "options": {
+                "four_hours": "4 hodiny",
+                "one_day": "1 deň",
+                "unlimited": "Neobmedzené"
+            }
+        },
+        "wifi_security": {
+            "options": {
+                "encrypted": "Zašifrované",
+                "open": "Otvoriť"
+            }
+        }
+    }
+}
