@@ -16,6 +16,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 [![English](docs/images/flags/gb.png)](custom_components/huawei_mesh_router/translations/en.json)
 [![Brazilian Portuguese](docs/images/flags/br.png)](custom_components/huawei_mesh_router/translations/pt-BR.json)
 [![Español](docs/images/flags/es.png)](custom_components/huawei_mesh_router/translations/es.json)
+[![Slovak](docs/images/flags/sk.png)](custom_components/huawei_mesh_router/translations/sk.json)
 
 ## Key features
 
