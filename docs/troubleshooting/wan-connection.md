@@ -18,6 +18,7 @@ As an example, consider a connection scheme in which there is a Raspberry PI in 
 
 The port forwarding is configured on the router itself so that requests from the "WAN" (in fact, from the Mikrotik router and other devices, including the smart home server) are redirected to the Raspberry Pi.
 
+![Port Forwarding setup](images/ports_forwarding.png)
 
 HAProxy on Raspberry Pi redirects incoming requests to it back to the Huawei router, but this time the router already believes that these requests are coming from a trusted LAN network, and allows access to the API.
 
