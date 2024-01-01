@@ -8,7 +8,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
-![Maintained](https://img.shields.io/maintenance/yes/2023)
+![Maintained](https://img.shields.io/maintenance/yes/2024)
 
 [![Localization contribute](https://img.shields.io/badge/localization-contrubute-blue)](docs/localization.md)
 
@@ -41,16 +41,19 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 - events for connecting, disconnecting, or moving devices over a mesh network
 - automatic detection of available functions
 
-## Supported models
+## Confirmed supported models
 
-|                                        Name                                        |  Model | Confirmed |                    Notes                    |
-|------------------------------------------------------------------------------------|--------|-----------|---------------------------------------------|
-| [Huawei WiFi AX3 Dual-core](https://consumer.huawei.com/en/routers/ax3-dual-core/) | WS7100 |    Yes    | No NFC switches (unsupported by router)     |
-| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |    Yes    |                                             |
-| [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |    No     |                                             |
-| [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 |    Yes    | My router model. All features are available |
-| [Huawei WiFi Mesh 7](https://consumer.huawei.com/en/routers/wifi-mesh7/)           | WS8800 |    Yes    |                                             |
-| Other Huawei routers based on HarmonyOS (except Chinese domestic market)           |   ---  |    ---    | Most likely they will work                  |
+|                                        Name                                        |  Model |                    Notes                    |
+|------------------------------------------------------------------------------------|--------|---------------------------------------------|
+| [Huawei WiFi AX3 Dual-core](https://consumer.huawei.com/en/routers/ax3-dual-core/) | WS7100 | No NFC switches (unsupported by router)     |
+| [Huawei WiFi AX3 Quad-core](https://consumer.huawei.com/en/routers/ax3-quad-core/) | WS7200 |                                             |
+| [Huawei WiFi AX3 Pro](https://consumer.huawei.com/en/routers/ax3-pro/)             | WS7206 |                                             |
+| [Huawei WiFi Mesh](https://consumer.huawei.com/en/routers/wifi-mesh/)              | AC2200 |                                             |
+| [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 | My router model. All features are available |
+| [Huawei WiFi Mesh 7](https://consumer.huawei.com/en/routers/wifi-mesh7/)           | WS8800 |                                             |
+
+
+Other Huawei routers based on HarmonyOS (except Chinese domestic market) most likely will work.
 
 
 ## Not supported models
