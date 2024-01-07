@@ -53,7 +53,7 @@ from .client.const import CONNECTED_VIA_ID_PRIMARY
 from .client.huaweiapi import HuaweiApi
 from .const import ATTR_MANUFACTURER, DOMAIN
 from .options import HuaweiIntegrationOptions
-from .utils import HuaweiChangesWatcher, TagsMap, ZonesMap, _TItem, _TKey
+from .utils import HuaweiChangesWatcher, TagsMap, ZonesMap, _TItem, _TKey, get_readable_rate
 
 _PRIMARY_ROUTER_IDENTITY: Final = "primary_router"
 
@@ -905,9 +905,11 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     is_hilink=device_data.is_hilink,
                     is_router=device_data.is_router,
                     connected_via_id=connected_via.get("id"),
-                    zone=ZoneInfo(name=zone_name, entity_id=zone_id)
-                    if zone_id
-                    else None,
+                    zone=ZoneInfo(name=zone_name, entity_id=zone_id) if zone_id else None,
+                    upload_rate_kilobytes_s=device_data.upload_rate,
+                    download_rate_kilobytes_s=device_data.download_rate,
+                    upload_rate=get_readable_rate(device_data.upload_rate),
+                    download_rate=get_readable_rate(device_data.download_rate),
                 )
             else:
                 device.update_device_data(name, host_name, False, tags, filter_mode)

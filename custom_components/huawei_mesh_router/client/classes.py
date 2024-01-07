@@ -13,6 +13,8 @@ NODE_HILINK_TYPE_NONE: Final = "None"
 
 MAC_ADDR: TypeAlias = str
 
+KILOBYTES_PER_SECOND: TypeAlias = int
+
 
 # ---------------------------
 #   Feature
@@ -207,6 +209,8 @@ class HuaweiConnectionInfo:
     uptime: int
     connected: bool
     address: str | None
+    upload_rate: KILOBYTES_PER_SECOND
+    download_rate: KILOBYTES_PER_SECOND
 
 
 # ---------------------------
@@ -276,6 +280,16 @@ class HuaweiClientDevice:
     def interface_type(self) -> str | None:
         """Return the connection interface type."""
         return self._data.get("InterfaceType")
+
+    @property
+    def upload_rate(self) -> KILOBYTES_PER_SECOND:
+        """Return the upload rate in kilobytes per second."""
+        return self._data.get("UpRate", 0)
+
+    @property
+    def download_rate(self) -> KILOBYTES_PER_SECOND:
+        """Return the download rate in kilobytes per second."""
+        return self._data.get("DownRate", 0)
 
 
 # ---------------------------
