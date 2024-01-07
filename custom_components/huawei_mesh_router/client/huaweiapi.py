@@ -37,6 +37,7 @@ from .const import (
     URL_URL_FILTER,
     URL_WANDETECT,
     URL_WLAN_FILTER,
+    URL_WAN_INFO,
     WIFI_SECURITY_ENCRYPTED,
     WIFI_SECURITY_OPEN,
 )
@@ -157,11 +158,14 @@ class HuaweiApi:
         data = await self._core_api.get(
             URL_WANDETECT, check_authorized=HuaweiApi._wan_info_check_authorized
         )
+        rate_data = await self._core_api.get(URL_WAN_INFO)
 
         return HuaweiConnectionInfo(
             uptime=data.get("Uptime", 0),
             connected=data.get("Status") == _STATUS_CONNECTED,
             address=data.get("ExternalIPAddress"),
+            upload_rate=rate_data.get("UpBandwidth", 0),
+            download_rate=rate_data.get("DownBandwidth", 0)
         )
 
     async def get_switch_state(self, switch: Switch) -> bool:

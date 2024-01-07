@@ -8,7 +8,7 @@ from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.storage import Store
 
 from .classes import DEVICE_TAG
-from .client.classes import MAC_ADDR
+from .client.classes import MAC_ADDR, KILOBYTES_PER_SECOND
 
 _TKey = TypeVar("_TKey")
 _TItem = TypeVar("_TItem")
@@ -159,3 +159,20 @@ class ZonesMap:
 
         self._devices_to_zones[device_id] = zone_id
         await self._storage.async_save(self._devices_to_zones)
+
+
+def get_readable_rate(
+        rate: KILOBYTES_PER_SECOND
+) -> str:
+    unit: str = "Kbps"
+    value = rate * 8
+
+    if value > 1024:
+        unit = "Mbps"
+        value = round(value / 1024, 1)
+
+    if value > 1024:
+        unit = "Gbps"
+        value = round(value / 1024, 1)
+
+    return f"{value} {unit}"

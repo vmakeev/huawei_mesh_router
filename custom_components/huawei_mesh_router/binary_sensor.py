@@ -24,6 +24,7 @@ from .helpers import (
     get_past_moment,
 )
 from .update_coordinator import HuaweiDataUpdateCoordinator
+from .utils import get_readable_rate
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -159,4 +160,9 @@ class HuaweiWanBinarySensor(HuaweiBinarySensor):
         self._attr_extra_state_attributes["connected_at"] = get_past_moment(
             wan_info.uptime
         )
+        self._attr_extra_state_attributes["upload_rate_kilobytes_s"] = wan_info.upload_rate
+        self._attr_extra_state_attributes["download_rate_kilobytes_s"] = wan_info.download_rate
+        self._attr_extra_state_attributes["upload_rate"] = get_readable_rate(wan_info.upload_rate)
+        self._attr_extra_state_attributes["download_rate"] = get_readable_rate(wan_info.download_rate)
+
         super()._handle_coordinator_update()
