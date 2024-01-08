@@ -83,10 +83,16 @@ _Note: Sensors for additional routers are located in their own devices._
 
 Each sensor exposes the following attributes:
 
-|     Attribute        |                        Description                          |
-|----------------------|-------------------------------------------------------------|
-| `external_ip`        | WAN IP address                                              |
-| `uptime_seconds`     | Connection uptime in seconds                                |
-| `connected_at`       | The date and time when the connection was last established  |
+|         Attribute           |                        Description                          |
+|-----------------------------|-------------------------------------------------------------|
+| `external_ip`               | WAN IP address                                              |
+| `uptime_seconds`            | Connection uptime in seconds                                |
+| `connected_at`              | The date and time when the connection was last established  |
+| `upload_rate_kilobytes_s`   | Current upload speed in kilobytes per second                |
+| `download_rate_kilobytes_s` | Current download speed in kilobytes per second              |
+| `upload_rate`               | Human-readable current upload speed                         |
+| `download_rate`             | Human-readable current download speed                       |
 
 _Note: The `connected_at` attribute value may not be entirely accurate if the clocks on the router and on the Home Assistant server are out of sync._
+
+_Note: The `upload_rate_kilobytes_s`/`download_rate_kilobytes_s` are specified in kilobytes, not in kilobits. To convert it to kilobits per second, the value must be multiplied by 8. The values are updated at the interval specified in the [advanced options](../README.md#advanced-options)._
