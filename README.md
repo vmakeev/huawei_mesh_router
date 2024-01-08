@@ -22,7 +22,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 - obtaining information about all routers and connected devices in the entire mesh network:
   - connected devices tracking and tagging
-  - device connection parameters (frequency, signal strength, guest and hilink devices)
+  - device connection parameters (frequency, signal strength, guest and hilink devices, upload/download rates)
   - name of the specific router to which the device is connected
   - number of connected devices (total and for each individual router)
 - Wi-Fi access management:
@@ -32,7 +32,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
   - Wi-Fi access switch per client device
 - enabling and disabling access to specific sites
 - hardware and firmware version of the primary router
-- internet connection details
+- Internet connection details (IP address, status, upload/download rates)
 - uptime of each router
 - control of the NFC (OneHop Connect) on each router separately
 - control of the Fast Roaming function (802.11r)
