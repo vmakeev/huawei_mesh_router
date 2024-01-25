@@ -179,7 +179,7 @@ def lock_auth_call(func):
 # ---------------------------
 async def _get_response_text(response: ClientResponse) -> str:
     content_bytes = await response.content.read()
-    text = content_bytes.decode("utf-8")
+    text = content_bytes.decode("utf-8", errors="ignore")
     return text
 
 
