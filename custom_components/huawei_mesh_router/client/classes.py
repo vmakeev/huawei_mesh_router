@@ -27,6 +27,7 @@ class Feature(StrEnum):
     WLAN_FILTER = "feature_wlan_filter"
     DEVICE_TOPOLOGY = "feature_device_topology"
     GUEST_NETWORK = "feature_guest_network"
+    PORT_MAPPING = "feature_port_mapping"
 
 
 # ---------------------------
@@ -126,6 +127,72 @@ class HuaweiUrlFilterInfo:
     enabled: bool
     dev_manual: bool
     devices: list[HuaweiFilterItem]
+
+
+# ---------------------------
+#   HuaweiPortMappingItem
+# ---------------------------
+class HuaweiPortMappingItem:
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        enabled: bool,
+        host_ip: str,
+        host_mac: MAC_ADDR,
+        host_name: str,
+        application_id: str,
+    ) -> None:
+        self._id = id
+        self._name = name
+        self._enabled = enabled
+        self._host_ip = host_ip
+        self._host_name = host_name
+        self._host_mac = host_mac
+        self._application_id = application_id
+
+    @classmethod
+    def parse(cls, raw_data: dict[str, Any]) -> HuaweiPortMappingItem:
+        id = raw_data.get("ID")
+        if not id:
+            raise ValueError("Id can not be empty")
+
+        raw_enabled = raw_data.get("Enable")
+        enabled = isinstance(raw_enabled, bool) and raw_enabled
+
+        ip_address = raw_data.get("HostIPAddress", "")
+        mac_address = raw_data.get("InternalHost", "")
+        name = raw_data.get("Name", "")
+        host_name = raw_data.get("HostName", "")
+        application_id = raw_data.get("ApplicationID", "")
+
+        return HuaweiPortMappingItem(
+            id, name, enabled, ip_address, mac_address, host_name, application_id
+        )
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def host_name(self) -> str:
+        return self._host_name
+
+    @property
+    def host_ip(self) -> str:
+        return self._host_ip
+
+    @property
+    def host_mac(self) -> str:
+        return self._host_mac
 
 
 # ---------------------------

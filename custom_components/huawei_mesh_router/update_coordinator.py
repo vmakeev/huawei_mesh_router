@@ -1,4 +1,5 @@
 """Huawei Controller for Huawei Router."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -30,6 +31,7 @@ from .classes import (
     HuaweiEvents,
     HuaweiInterfaceType,
     HuaweiWlanFilterMode,
+    PortMapping,
     Select,
     UrlFilter,
     ZoneInfo,
@@ -53,7 +55,14 @@ from .client.const import CONNECTED_VIA_ID_PRIMARY
 from .client.huaweiapi import HuaweiApi
 from .const import ATTR_MANUFACTURER, DOMAIN
 from .options import HuaweiIntegrationOptions
-from .utils import HuaweiChangesWatcher, TagsMap, ZonesMap, _TItem, _TKey, get_readable_rate
+from .utils import (
+    HuaweiChangesWatcher,
+    TagsMap,
+    ZonesMap,
+    _TItem,
+    _TKey,
+    get_readable_rate,
+)
 
 _PRIMARY_ROUTER_IDENTITY: Final = "primary_router"
 
@@ -102,6 +111,38 @@ class HuaweiUrlFiltersWatcher(HuaweiChangesWatcher[str, UrlFilter]):
 
 
 # ---------------------------
+#   HuaweiPortMappingsWatcher
+# ---------------------------
+class HuaweiPortMappingsWatcher(HuaweiChangesWatcher[str, PortMapping]):
+    def _get_actual_items(self) -> Iterable[_TItem]:
+        return self._coordinator.port_mappings.values()
+
+    def _get_key(self, item: _TItem) -> _TKey:
+        return item.id
+
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
+        """Initialize."""
+        self._coordinator = coordinator
+        super().__init__(lambda item: True)
+
+    def look_for_changes(
+        self,
+        on_added: Callable[[str, PortMapping], None] | None = None,
+        on_removed: Callable[[EntityRegistry, str, PortMapping], None] | None = None,
+    ) -> None:
+        """Look for difference between previously known and current lists of items."""
+        added, removed = self._get_difference(self._coordinator.hass)
+
+        if on_added:
+            for key, item in added:
+                on_added(key, item)
+
+        if on_removed:
+            for er, key, item in removed:
+                on_removed(er, key, item)
+
+
+# ---------------------------
 #   HuaweiConnectedDevicesWatcher
 # ---------------------------
 class HuaweiConnectedDevicesWatcher(HuaweiChangesWatcher[MAC_ADDR, ConnectedDevice]):
@@ -123,8 +164,9 @@ class HuaweiConnectedDevicesWatcher(HuaweiChangesWatcher[MAC_ADDR, ConnectedDevi
     def look_for_changes(
         self,
         on_added: Callable[[MAC_ADDR, ConnectedDevice], None] | None = None,
-        on_removed: Callable[[EntityRegistry, MAC_ADDR, ConnectedDevice], None]
-        | None = None,
+        on_removed: (
+            Callable[[EntityRegistry, MAC_ADDR, ConnectedDevice], None] | None
+        ) = None,
     ) -> None:
         """Look for difference between previously known and current lists of items."""
         added, removed = self._get_difference(self._coordinator.hass)
@@ -261,6 +303,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         self._select_states: dict[Select | str, str] = {}
         self._wlan_filter_info: HuaweiFilterInfo | None = None
         self._url_filters: dict[str, UrlFilter] = {}
+        self._port_mappings: dict[str, PortMapping] = {}
 
         super().__init__(
             hass,
@@ -304,6 +347,11 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
     def url_filters(self) -> dict[str, UrlFilter]:
         """Return the url filters."""
         return self._url_filters
+
+    @property
+    def port_mappings(self) -> dict[str, PortMapping]:
+        """Return the url filters."""
+        return self._port_mappings
 
     @property
     def tags_map(self) -> TagsMap:
@@ -400,10 +448,58 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_router_infos()
         await self._update_wan_info()
         await self._update_url_filter_info()
+        await self._update_port_mappings()
         await self._update_switches()
         await self._update_selects()
         self._logger.debug("Update completed")
         self._is_initial_update = False
+
+    @suppress_update_exception("Can not update port mappings %s")
+    async def _update_port_mappings(self) -> None:
+
+        if not self._integration_options.port_mapping_switches:
+            return
+
+        if not await self.primary_router_api.is_feature_available(Feature.PORT_MAPPING):
+            return
+
+        self._logger.debug("Updating port mappings")
+
+        new_port_mappings = {
+            item.id: item for item in await self.primary_router_api.get_port_mappings()
+        }
+
+        missing_port_mapping_ids: list[str] = []
+        for existing_port_mapping in self._port_mappings.values():
+            updated_port_mapping = new_port_mappings.get(existing_port_mapping.id)
+            if not updated_port_mapping:
+                missing_port_mapping_ids.append(existing_port_mapping.id)
+                continue
+
+            existing_port_mapping.update_info(
+                name=updated_port_mapping.name,
+                enabled=updated_port_mapping.enabled,
+                host_name=updated_port_mapping.host_name,
+                host_ip=updated_port_mapping.host_ip,
+                host_mac=updated_port_mapping.host_mac,
+            )
+
+        if missing_port_mapping_ids:
+            for missing_id in missing_port_mapping_ids:
+                del self._port_mappings[missing_id]
+
+        for updated_port_mapping in new_port_mappings.values():
+            if updated_port_mapping.id not in self._port_mappings:
+                self._port_mappings[updated_port_mapping.id] = PortMapping(
+                    updated_port_mapping.id,
+                    updated_port_mapping.name,
+                    updated_port_mapping.enabled,
+                    updated_port_mapping.host_name,
+                    updated_port_mapping.host_ip,
+                    updated_port_mapping.host_mac,
+                )
+
+        self._logger.debug("Port mappings updated")
 
     @suppress_update_exception("Can not update repeater state %s")
     async def _update_repeater_state(self) -> None:
@@ -622,7 +718,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
         primary_api = self._select_api(_PRIMARY_ROUTER_IDENTITY)
 
-        new_states: dict[Switch | str, bool] = {}
+        new_states: dict[Switch | EmulatedSwitch | str, bool] = {}
 
         if await primary_api.is_feature_available(Feature.WIFI_80211R):
             state = await primary_api.get_switch_state(Switch.WIFI_80211R)
@@ -656,11 +752,9 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
             if device and device.is_active:
                 await self.update_router_nfc_switch(api, device, new_states)
 
-        if self._integration_options.wifi_access_switches:
-            await self.calculate_device_access_switch_states(new_states)
-
-        if self._integration_options.url_filter_switches:
-            await self.calculate_url_filter_switch_states(new_states)
+        await self.calculate_device_access_switch_states(new_states)
+        await self.calculate_url_filter_switch_states(new_states)
+        await self.calculate_port_mapping_switches(new_states)
 
         self._switch_states = new_states
         self._logger.debug("Switches states updated")
@@ -681,7 +775,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
     async def calculate_device_access_switch_states(
-        self, states: dict[Switch | str, bool] | None = None
+        self, states: dict[Switch | EmulatedSwitch | str, bool] | None = None
     ) -> None:
         """Update device access switch states."""
         if not self._integration_options.wifi_access_switches:
@@ -709,7 +803,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 )
 
     async def calculate_url_filter_switch_states(
-        self, states: dict[Switch | str, bool] | None = None
+        self, states: dict[Switch | EmulatedSwitch | str, bool] | None = None
     ) -> None:
         """Update url filter switch states."""
         if not self._integration_options.url_filter_switches:
@@ -723,6 +817,24 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 self._logger.debug(
                     "URL filter switch (%s) state updated to %s",
                     item.filter_id,
+                    item.enabled,
+                )
+
+    async def calculate_port_mapping_switches(
+        self, states: dict[Switch | EmulatedSwitch | str, bool] | None = None
+    ) -> None:
+        """Update url filter switch states."""
+        if not self._integration_options.port_mapping_switches:
+            return
+
+        states = states or self._switch_states
+
+        if await self.primary_router_api.is_feature_available(Feature.PORT_MAPPING):
+            for item in self._port_mappings.values():
+                states[f"{EmulatedSwitch.PORT_MAPPING}_{item.id}"] = item.enabled
+                self._logger.debug(
+                    "Port mapping switch (%s) state updated to %s",
+                    item.id,
                     item.enabled,
                 )
 
@@ -780,13 +892,13 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         devices_to_filters: dict[MAC_ADDR, HuaweiWlanFilterMode] = {}
         if self._wlan_filter_info:
             for blacklisted in self._wlan_filter_info.blacklist:
-                devices_to_filters[
-                    blacklisted.mac_address
-                ] = HuaweiWlanFilterMode.BLACKLIST
+                devices_to_filters[blacklisted.mac_address] = (
+                    HuaweiWlanFilterMode.BLACKLIST
+                )
             for whitelisted in self._wlan_filter_info.whitelist:
-                devices_to_filters[
-                    whitelisted.mac_address
-                ] = HuaweiWlanFilterMode.WHITELIST
+                devices_to_filters[whitelisted.mac_address] = (
+                    HuaweiWlanFilterMode.WHITELIST
+                )
 
         if self._integration_options.devices_tags and not self._tags_map.is_loaded:
             await self._tags_map.load()
@@ -826,7 +938,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                         ip_address,
                         name,
                         connected_via.get("id"),
-                        connected_via.get("name")
+                        connected_via.get("name"),
                     )
 
             # if state of the device is changed then firing an event
@@ -838,7 +950,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                         ip_address,
                         name,
                         connected_via.get("id"),
-                        connected_via.get("name")
+                        connected_via.get("name"),
                     )
                 else:
                     self._events.fire_device_disconnected(
@@ -847,7 +959,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                         ip_address,
                         name,
                         device.connected_via_id,
-                        device.connected_via_name
+                        device.connected_via_name,
                     )
 
             if is_active:
@@ -905,7 +1017,9 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     is_hilink=device_data.is_hilink,
                     is_router=device_data.is_router,
                     connected_via_id=connected_via.get("id"),
-                    zone=ZoneInfo(name=zone_name, entity_id=zone_id) if zone_id else None,
+                    zone=(
+                        ZoneInfo(name=zone_name, entity_id=zone_id) if zone_id else None
+                    ),
                     upload_rate_kilobytes_s=device_data.upload_rate,
                     download_rate_kilobytes_s=device_data.download_rate,
                     upload_rate=get_readable_rate(device_data.upload_rate),
@@ -988,6 +1102,22 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
             await self.primary_router_api.apply_url_filter_info(filter_info)
+
+        # Port mapping switch processing
+        elif switch == EmulatedSwitch.PORT_MAPPING:
+            if not switch_id:
+                raise CoordinatorError(
+                    f"Can not set value: switch_id is required for {EmulatedSwitch.PORT_MAPPING}"
+                )
+            port_mapping = self._port_mappings.get(switch_id)
+            if port_mapping.enabled == state:
+                return
+
+            port_mapping.set_enabled(state)
+
+            await self.primary_router_api.set_port_mapping_state(
+                port_mapping.id, port_mapping.enabled
+            )
 
         # other switches
         else:

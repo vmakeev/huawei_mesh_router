@@ -37,6 +37,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 - control of the NFC (OneHop Connect) on each router separately
 - control of the Fast Roaming function (802.11r)
 - control of the Target Wake Time (reduce power consumption of Wi-Fi 6 devices in sleep mode)
+- port mapping switches
 - reboot buttons
 - events for connecting, disconnecting, or moving devices over a mesh network
 - automatic detection of available functions
@@ -51,6 +52,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 | [Huawei WiFi Mesh](https://consumer.huawei.com/en/routers/wifi-mesh/)              | AC2200 |                                             |
 | [Huawei WiFi Mesh 3](https://consumer.huawei.com/en/routers/wifi-mesh3/)           | WS8100 | My router model. All features are available |
 | [Huawei WiFi Mesh 7](https://consumer.huawei.com/en/routers/wifi-mesh7/)           | WS8800 |                                             |
+| [Honor Router 3](https://www.hihonor.com/global/routers/honor-router-3/)           |  XD20  |                                             |
 
 
 Other Huawei routers based on HarmonyOS (except Chinese domestic market) most likely will work.
@@ -74,7 +76,7 @@ Copy `huawei_mesh_router` folder from [latest release](https://github.com/vmakee
 
 ### HACS
 
-`HACS` **->** press `EXPLORE & DOWNLOAD REPOSITORIES` button **->** type `huawei mesh router` **->** press `DOWNLOAD` button and follow the instructions.
+`HACS` **->** type `huawei mesh router` **->** click on it **->** press `DOWNLOAD` button and follow the instructions.
 
 Or simply click the button below:
 
@@ -111,6 +113,7 @@ Advanced settings include:
 | Enabling or disabling [Router-specific zones](docs/device-tracking.md#router-specific-zones)                     |  Disabled  |
 | Enabling or disabling [Website filtering switches](docs/controls.md#website-filtering)                           |  Disabled  |
 | Enabling or disabling [Event entities](docs/events.md#event-entities)                                            |  Disabled  |
+| Enabling or disabling [Port mapping switches](docs/controls.md#port-mapping)                                     |  Disabled  |
 
 
 ![Options 1/2](docs/images/options_1.png)
@@ -149,6 +152,7 @@ You can attach one or more tags to each client device in order to be able to use
 * Device Wi-Fi Access ([read more](docs/controls.md#device-wi-fi-access))
 * Website filtering ([read more](docs/controls.md#website-filtering))
 * Guest network ([read more](docs/controls.md#guest-network))
+* Port mapping ([read more](docs/controls.md#port-mapping))
 
 ### Selects
 * Wi-Fi access control mode ([read more](docs/controls.md#wi-fi-access-control-mode))

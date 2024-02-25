@@ -1,4 +1,5 @@
 """Huawei router switches."""
+
 from __future__ import annotations
 
 from abc import ABC
@@ -28,7 +29,9 @@ from .update_coordinator import (
     ActiveRoutersWatcher,
     ClientWirelessDevicesWatcher,
     HuaweiDataUpdateCoordinator,
+    HuaweiPortMappingsWatcher,
     HuaweiUrlFiltersWatcher,
+    PortMapping,
     UrlFilter,
 )
 
@@ -51,6 +54,9 @@ _FUNCTION_ID_DEVICE_ACCESS: Final = "switch_device_access"
 
 _FUNCTION_DISPLAYED_NAME_URL_FILTER: Final = "URL filter"
 _FUNCTION_ID_URL_FILTER: Final = "switch_url_filter"
+
+_FUNCTION_DISPLAYED_NAME_PORT_MAPPING: Final = "Port mapping"
+_FUNCTION_ID_PORT_MAPPING: Final = "switch_port_mapping"
 
 _FUNCTION_DISPLAYED_NAME_GUEST_NETWORK: Final = "Guest network"
 _FUNCTION_ID_GUEST_NETWORK: Final = "switch_guest_network"
@@ -115,6 +121,24 @@ async def _add_url_filter_switch_if_available(
 
 
 # ---------------------------
+#   _add_port_mapping_switch_if_available
+# ---------------------------
+async def _add_port_mapping_switch_if_available(
+    coordinator: HuaweiDataUpdateCoordinator,
+    known_port_mapping_switches: dict[str, HuaweiSwitch],
+    port_mapping: PortMapping,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    if await coordinator.is_feature_available(Feature.PORT_MAPPING):
+        if not known_port_mapping_switches.get(port_mapping.id):
+            entity = HuaweiPortMappingSwitch(coordinator, port_mapping)
+            async_add_entities([entity])
+            known_port_mapping_switches[port_mapping.id] = entity
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", Feature.PORT_MAPPING)
+
+
+# ---------------------------
 #   async_setup_entry
 # ---------------------------
 async def async_setup_entry(
@@ -158,6 +182,7 @@ async def async_setup_entry(
 
     watch_for_additional_routers(coordinator, config_entry, async_add_entities)
     watch_for_url_filters(coordinator, config_entry, async_add_entities)
+    watch_for_port_mappings(coordinator, config_entry, async_add_entities)
 
 
 # ---------------------------
@@ -213,6 +238,9 @@ def watch_for_additional_routers(
     coordinator_updated()
 
 
+# ---------------------------
+#   watch_for_url_filters
+# ---------------------------
 def watch_for_url_filters(coordinator, config_entry, async_add_entities):
     integration_options = HuaweiIntegrationOptions(config_entry)
     is_url_filter_switches_enabled = integration_options.url_filter_switches
@@ -258,6 +286,64 @@ def watch_for_url_filters(coordinator, config_entry, async_add_entities):
             filters_watcher.look_for_changes(on_filter_added, on_filter_removed)
 
     if is_url_filter_switches_enabled:
+        config_entry.async_on_unload(
+            coordinator.async_add_listener(coordinator_updated)
+        )
+        coordinator_updated()
+
+
+# ---------------------------
+#   watch_for_port_mappings
+# ---------------------------
+def watch_for_port_mappings(coordinator, config_entry, async_add_entities):
+    integration_options = HuaweiIntegrationOptions(config_entry)
+    is_port_mapping_switches_enabled = integration_options.port_mapping_switches
+
+    known_port_mapping_switches: dict[str, HuaweiSwitch] = {}
+    port_mappings_watcher: HuaweiPortMappingsWatcher = HuaweiPortMappingsWatcher(
+        coordinator
+    )
+
+    @callback
+    def on_port_mapping_added(port_mapping_id: str, port_mapping: PortMapping) -> None:
+        """When a new port mapping is found."""
+        coordinator.hass.async_add_job(
+            _add_port_mapping_switch_if_available(
+                coordinator,
+                known_port_mapping_switches,
+                port_mapping,
+                async_add_entities,
+            )
+        )
+
+    @callback
+    def on_port_mapping_removed(
+        er: EntityRegistry, port_mapping_id: str, port_mapping: PortMapping
+    ) -> None:
+        """When a known port mapping removed."""
+        unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_PORT_MAPPING, port_mapping_id
+        )
+        entity_id = er.async_get_entity_id(Platform.SWITCH, DOMAIN, unique_id)
+        if entity_id:
+            er.async_remove(entity_id)
+            if port_mapping_id in known_port_mapping_switches:
+                del known_port_mapping_switches[port_mapping_id]
+        else:
+            _LOGGER.warning(
+                "Can not remove unavailable switch '%s': entity id not found.",
+                unique_id,
+            )
+
+    @callback
+    def coordinator_updated() -> None:
+        """Update the status of the device."""
+        if is_port_mapping_switches_enabled:
+            port_mappings_watcher.look_for_changes(
+                on_port_mapping_added, on_port_mapping_removed
+            )
+
+    if is_port_mapping_switches_enabled:
         config_entry.async_on_unload(
             coordinator.async_add_listener(coordinator_updated)
         )
@@ -553,6 +639,62 @@ class HuaweiUrlFilterSwitch(HuaweiSwitch):
         self._attr_extra_state_attributes["devices"] = (
             self._filter_info.devices if self._filter_info.dev_manual else "All"
         )
+
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.is_router_online() and self.is_on is not None
+
+
+# ---------------------------
+#   HuaweiPortMappingSwitch
+# ---------------------------
+class HuaweiPortMappingSwitch(HuaweiSwitch):
+    def __init__(
+        self,
+        coordinator: HuaweiDataUpdateCoordinator,
+        port_mapping: PortMapping,
+    ) -> None:
+        """Initialize."""
+        self._port_mapping = port_mapping
+        self._attr_extra_state_attributes = {}
+        super().__init__(
+            coordinator, EmulatedSwitch.PORT_MAPPING, switch_id=port_mapping.id
+        )
+        self._attr_device_info = None
+
+        self._attr_name = (
+            f"{_FUNCTION_DISPLAYED_NAME_PORT_MAPPING}: {port_mapping.name}"
+        )
+
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_PORT_MAPPING, port_mapping.id
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_PORT_MAPPING,
+            port_mapping.name,
+        )
+        self._attr_icon = "mdi:upload-network-outline"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+
+        debug_data = f"Id: {self._port_mapping.id}, name: {self._port_mapping.name}, enabled: {self._port_mapping.enabled}"
+
+        _LOGGER.debug("Switch %s: info is %s", self._switch_id, debug_data)
+
+        self._attr_name = (
+            f"{_FUNCTION_DISPLAYED_NAME_PORT_MAPPING}: {self._port_mapping.name}"
+        )
+
+        self._attr_extra_state_attributes["host_name"] = self._port_mapping.host_name
+        self._attr_extra_state_attributes["host_ip"] = self._port_mapping.host_ip
+        self._attr_extra_state_attributes["host_mac"] = self._port_mapping.host_mac
 
         super()._handle_coordinator_update()
 
