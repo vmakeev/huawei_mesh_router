@@ -19,6 +19,7 @@ from .classes import (
     HuaweiFilterItem,
     HuaweiGuestNetworkDuration,
     HuaweiGuestNetworkItem,
+    HuaweiPortMappingItem,
     HuaweiRouterInfo,
     HuaweiRsaPublicKey,
     HuaweiUrlFilterInfo,
@@ -29,6 +30,7 @@ from .const import (
     URL_DEVICE_TOPOLOGY,
     URL_GUEST_NETWORK,
     URL_HOST_INFO,
+    URL_PORT_MAPPING,
     URL_REBOOT,
     URL_REPEATER_INFO,
     URL_SWITCH_NFC,
@@ -165,7 +167,7 @@ class HuaweiApi:
             connected=data.get("Status") == _STATUS_CONNECTED,
             address=data.get("ExternalIPAddress"),
             upload_rate=rate_data.get("UpBandwidth", 0),
-            download_rate=rate_data.get("DownBandwidth", 0)
+            download_rate=rate_data.get("DownBandwidth", 0),
         )
 
     async def get_switch_state(self, switch: Switch) -> bool:
@@ -700,6 +702,29 @@ class HuaweiApi:
             URL_GUEST_NETWORK,
             data,
             headers={"Content-Type": "application/json;charset=UTF-8;enp"},
+        )
+
+    async def get_port_mappings(
+        self,
+    ) -> Iterable[HuaweiPortMappingItem]:
+        return [
+            HuaweiPortMappingItem.parse(item)
+            for item in await self._core_api.get(URL_PORT_MAPPING)
+        ]
+
+    async def set_port_mapping_state(self, port_mapping_id: str, enabled: bool) -> None:
+        port_mappings = await self._core_api.get(URL_PORT_MAPPING)
+        target = next(
+            (item for item in port_mappings if item.get("ID") == port_mapping_id)
+        )
+
+        if not target:
+            raise InvalidActionError(f"Unknown filter: {port_mapping_id}")
+
+        target["Enable"] = enabled
+
+        await self._core_api.post(
+            URL_PORT_MAPPING, target, extra_data={"action": "update"}
         )
 
     async def _set_guest_network_enabled(self, enabled: bool) -> None:

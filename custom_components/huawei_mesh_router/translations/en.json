@@ -38,6 +38,7 @@
                     "devices_tags": "Device tags",
                     "device_tracker": "Devices tracking",
                     "device_tracker_zones": "Router-specific zones for tracked devices",
+                    "port_mapping_switches": "Port forwarding switches",
                     "url_filter_switches": "Website filtering switches",
                     "event_entities": "Event entities"
                 },

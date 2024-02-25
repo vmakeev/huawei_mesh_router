@@ -12,6 +12,7 @@ from homeassistant.helpers.storage import Store
 from .client.huaweiapi import HuaweiApi
 from .const import (
     DEFAULT_DEVICE_TRACKER_ZONES,
+    DEFAULT_PORT_MAPPING_SWITCHES,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_URL_FILTER_SWITCHES,
     DEFAULT_EVENT_ENTITIES,
@@ -20,6 +21,7 @@ from .const import (
     OPT_DEVICE_TRACKER_ZONES,
     OPT_DEVICES_TAGS,
     OPT_EVENT_ENTITIES,
+    OPT_PORT_MAPPING_SWITCHES,
     OPT_ROUTER_CLIENTS_SENSORS,
     OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
@@ -174,6 +176,11 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
         _LOGGER.debug("Migrating to version 5")
         updated_options[OPT_EVENT_ENTITIES] = DEFAULT_EVENT_ENTITIES
         config_entry.version = 5
+
+    if config_entry.version == 5:
+        _LOGGER.debug("Migrating to version 6")
+        updated_options[OPT_PORT_MAPPING_SWITCHES] = DEFAULT_PORT_MAPPING_SWITCHES
+        config_entry.version = 6
 
     hass.config_entries.async_update_entry(
         config_entry, data=updated_data, options=updated_options

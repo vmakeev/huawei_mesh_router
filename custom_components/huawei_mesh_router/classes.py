@@ -34,6 +34,7 @@ class Select(StrEnum):
 class EmulatedSwitch(StrEnum):
     DEVICE_ACCESS = "wlan_device_access_switch"
     URL_FILTER = "url_filter_switch"
+    PORT_MAPPING = "port_mapping"
 
 
 # ---------------------------
@@ -105,6 +106,63 @@ class UrlFilter:
     @property
     def devices(self) -> Iterable[HuaweiFilterItem]:
         return self._devices
+
+
+# ---------------------------
+#   PortMapping
+# ---------------------------
+class PortMapping:
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        enabled: bool,
+        host_name: str,
+        host_ip: str,
+        host_mac: str,
+    ) -> None:
+        self._id = id
+        self._name = name
+        self._enabled = enabled
+        self._host_name = host_name
+        self._host_ip = host_ip
+        self._host_mac = host_mac
+
+    def update_info(
+        self, name: str, enabled: bool, host_name: str, host_ip: str, host_mac: str
+    ) -> None:
+        self._name = name
+        self._enabled = enabled
+        self._host_name = host_name
+        self._host_ip = host_ip
+        self._host_mac = host_mac
+
+    def set_enabled(self, enabled: bool) -> None:
+        self._enabled = enabled
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def host_name(self) -> str:
+        return self._host_name
+
+    @property
+    def host_ip(self) -> str:
+        return self._host_ip
+
+    @property
+    def host_mac(self) -> str:
+        return self._host_mac
 
 
 # ---------------------------
@@ -253,9 +311,9 @@ EVENT_TYPE_DEVICE: Final = DOMAIN + "_device_event"
 class HuaweiEvents:
     def __init__(self, hass: HomeAssistant):
         self._hass: HomeAssistant = hass
-        self._subscriptions: dict[
-            CALLBACK_TYPE, tuple[HANDLER_TYPE, object | None]
-        ] = {}
+        self._subscriptions: dict[CALLBACK_TYPE, tuple[HANDLER_TYPE, object | None]] = (
+            {}
+        )
 
     # ---------------------------
     #   async_subscribe_event
@@ -293,7 +351,7 @@ class HuaweiEvents:
         primary_router_serial: str | None,
         router_mac: MAC_ADDR,
         router_ip: str,
-        router_name: str | None
+        router_name: str | None,
     ) -> None:
         """Fire an event when a new router is discovered."""
         event_data = {
@@ -311,7 +369,7 @@ class HuaweiEvents:
         primary_router_serial: str | None,
         router_mac: MAC_ADDR,
         router_ip: str,
-        router_name: str | None
+        router_name: str | None,
     ) -> None:
         """Fire an event when a router becomes unavailable."""
         event_data = {
@@ -331,14 +389,14 @@ class HuaweiEvents:
         device_ip: str,
         device_name: str | None,
         router_id: str,
-        router_name: str
+        router_name: str,
     ) -> None:
         """Fire an event when a new device is connected."""
         event_data = {
             "type": EventTypes.DEVICE_CONNECTED,
             "primary_router": primary_router_serial,
             "device": {"ip": device_ip, "mac": device_mac, "name": device_name},
-            "router": {"id": router_id, "name": router_name}
+            "router": {"id": router_id, "name": router_name},
         }
         self._fire(EVENT_TYPE_DEVICE, event_data)
 
@@ -352,14 +410,14 @@ class HuaweiEvents:
         device_ip: str,
         device_name: str | None,
         router_id: str,
-        router_name: str
+        router_name: str,
     ) -> None:
         """Fire an event when a device becomes disconnected."""
         event_data = {
             "type": EventTypes.DEVICE_DISCONNECTED,
             "primary_router": primary_router_serial,
             "device": {"ip": device_ip, "mac": device_mac, "name": device_name},
-            "router": {"id": router_id, "name": router_name}
+            "router": {"id": router_id, "name": router_name},
         }
         self._fire(EVENT_TYPE_DEVICE, event_data)
 
@@ -382,6 +440,6 @@ class HuaweiEvents:
             "primary_router": primary_router_serial,
             "device": {"ip": device_ip, "mac": device_mac, "name": device_name},
             "router_from": {"id": old_router_id, "name": old_router_name},
-            "router_to": {"id": actual_router_id, "name": actual_router_name}
+            "router_to": {"id": actual_router_id, "name": actual_router_name},
         }
         self._fire(EVENT_TYPE_DEVICE, event_data)

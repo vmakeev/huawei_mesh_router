@@ -5,6 +5,7 @@ from .classes import Feature
 from .const import (
     URL_DEVICE_TOPOLOGY,
     URL_GUEST_NETWORK,
+    URL_PORT_MAPPING,
     URL_SWITCH_NFC,
     URL_SWITCH_WIFI_80211R,
     URL_SWITCH_WIFI_TWT,
@@ -103,6 +104,12 @@ class HuaweiFeaturesDetector:
         data = await self._core_api.get(URL_GUEST_NETWORK)
         return data is not None
 
+    @log_feature(Feature.PORT_MAPPING)
+    @unauthorized_as_false
+    async def _is_port_mapping_available(self) -> bool:
+        data = await self._core_api.get(URL_PORT_MAPPING)
+        return data is not None
+
     async def update(self) -> None:
         """Update the available features list."""
         if await self._is_nfc_available():
@@ -125,6 +132,9 @@ class HuaweiFeaturesDetector:
 
         if await self._is_guest_network_available():
             self._available_features.add(Feature.GUEST_NETWORK)
+
+        if await self._is_port_mapping_available():
+            self._available_features.add(Feature.PORT_MAPPING)
 
     def is_available(self, feature: Feature) -> bool:
         """Return true if feature is available."""

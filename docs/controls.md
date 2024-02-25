@@ -125,6 +125,34 @@ _Note: these switches are not attached to a specific router device._
 
 _Note: if the filter is removed in the Primary router, the corresponding switch will be removed from the Home Assistant._
 
+###  Port mapping
+
+Allows you to enable or disable port forwarding.
+
+![Port mapping switch](images/switch_port_mapping.png)
+
+One switch is created for each forwarded port in the router:
+* `switch.<integration_name>_port_mapping_<service_name>`
+
+Each switch exposes the following attributes:
+
+|   Attribute      |                           Description                            |
+|------------------|------------------------------------------------------------------|
+| `host_name`      | Displayed name of the device to which the port will be forwarded |
+| `host_ip`        | IP address of the device to which the port will be forwarded     |
+| `host_mac`       | MAC address of the device to which the port will be forwarded    |
+
+You can configure port forwarding in the web interface of your router. 
+Example address: `http://192.168.3.1/html/index.html#/more/nat`
+
+![Port forwarding setup](images/nat_port_forwarding.png)
+
+These switches will not be added to Home Assistant if the Primary router does not support port forwarding, or this feature is not enabled in [advanced options](../README.md#advanced-options).
+
+_Note: these switches are not attached to a specific router device._
+
+_Note: if the port forwarding is removed in the Primary router, the corresponding switch will be removed from the Home Assistant._
+
 ### Guest network
 
 Allows you to enable or disable the guest Wi-Fi network.

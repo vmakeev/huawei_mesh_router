@@ -38,6 +38,7 @@
                     "devices_tags": "Štítky zariadení",
                     "device_tracker": "Sledovanie zariadení",
                     "device_tracker_zones": "Zóny špecifické pre smerovač pre sledované zariadenia",
+                    "port_mapping_switches": "Prepínače pre presmerovanie portov",
                     "url_filter_switches": "Prepínače filtrovania webových stránok",
                     "event_entities": "Subjekty udalostí"
                 },
