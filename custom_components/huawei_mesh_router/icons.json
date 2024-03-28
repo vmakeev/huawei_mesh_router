@@ -1,0 +1,9 @@
+{
+  "services": {
+    "whitelist_add": "mdi:account-plus-outline",
+    "blacklist_add": "mdi:account-plus",
+    "whitelist_remove": "mdi:account-minus-outline",
+    "blacklist_remove": "mdi:account-minus",
+    "guest_network_setup": "mdi:wifi-cog"
+  }
+}
