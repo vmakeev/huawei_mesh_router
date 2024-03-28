@@ -432,7 +432,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
     def _safe_disconnect(self, api: HuaweiApi) -> None:
         """Disconnect from API."""
         try:
-            self.hass.async_add_job(api.disconnect)
+            self.hass.async_create_task(api.disconnect())
         except Exception as ex:
             self._logger.warning("Can not schedule disconnect: %s", str(ex))
 

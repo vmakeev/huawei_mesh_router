@@ -202,7 +202,7 @@ def watch_for_additional_routers(
     @callback
     def on_router_added(device_mac: MAC_ADDR, router: ConnectedDevice) -> None:
         """When a new mesh router is detected."""
-        coordinator.hass.async_add_job(
+        coordinator.hass.async_create_task(
             _add_nfc_if_available(
                 coordinator, known_nfc_switches, device_mac, router, async_add_entities
             )
@@ -217,7 +217,7 @@ def watch_for_additional_routers(
     @callback
     def on_wireless_device_added(device_mac: MAC_ADDR, device: ConnectedDevice) -> None:
         """When a new mesh router is detected."""
-        coordinator.hass.async_add_job(
+        coordinator.hass.async_create_task(
             _add_access_switch_if_available(
                 coordinator,
                 known_access_switches,
@@ -251,7 +251,7 @@ def watch_for_url_filters(coordinator, config_entry, async_add_entities):
     @callback
     def on_filter_added(filter_id: str, url_filter: UrlFilter) -> None:
         """When a new filter is found."""
-        coordinator.hass.async_add_job(
+        coordinator.hass.async_create_task(
             _add_url_filter_switch_if_available(
                 coordinator,
                 known_url_filter_switches,
@@ -307,7 +307,7 @@ def watch_for_port_mappings(coordinator, config_entry, async_add_entities):
     @callback
     def on_port_mapping_added(port_mapping_id: str, port_mapping: PortMapping) -> None:
         """When a new port mapping is found."""
-        coordinator.hass.async_add_job(
+        coordinator.hass.async_create_task(
             _add_port_mapping_switch_if_available(
                 coordinator,
                 known_port_mapping_switches,
