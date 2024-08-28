@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, time
 from dataclasses import dataclass
 from enum import Enum, IntEnum, StrEnum
 from typing import Any, Dict, Final, Iterable, TypeAlias
@@ -20,7 +21,7 @@ KILOBYTES_PER_SECOND: TypeAlias = int
 #   Feature
 # ---------------------------
 class Feature(StrEnum):
-    NFC: Final = "feature_nfc"
+    NFC = "feature_nfc"
     URL_FILTER = "feature_url_filter"
     WIFI_80211R = "feature_wifi_80211r"
     WIFI_TWT = "feature_wifi_twt"
@@ -28,13 +29,14 @@ class Feature(StrEnum):
     DEVICE_TOPOLOGY = "feature_device_topology"
     GUEST_NETWORK = "feature_guest_network"
     PORT_MAPPING = "feature_port_mapping"
+    TIME_CONTROL = "feature_time_control"
 
 
 # ---------------------------
 #   Switch
 # ---------------------------
 class Switch(StrEnum):
-    NFC: Final = "nfc_switch"
+    NFC = "nfc_switch"
     WIFI_80211R = "wifi_80211r_switch"
     WIFI_TWT = "wifi_twt_switch"
     WLAN_FILTER = "wlan_filter_switch"
@@ -127,6 +129,19 @@ class HuaweiUrlFilterInfo:
     enabled: bool
     dev_manual: bool
     devices: list[HuaweiFilterItem]
+
+
+# ---------------------------
+#   DayOfWeek
+# ---------------------------
+class DayOfWeek(StrEnum):
+    MONDAY = "Monday"
+    TUESDAY = "Tuesday"
+    WEDNESDAY = "Wednesday"
+    THURSDAY = "Thursday"
+    FRIDAY = "Friday"
+    SATURDAY = "Saturday"
+    SUNDAY = "Sunday"
 
 
 # ---------------------------
@@ -387,3 +402,94 @@ class HuaweiDeviceNode:
     def add_device(self, device: HuaweiDeviceNode) -> None:
         """Add connected node to the device."""
         self._connected_devices.append(device)
+
+
+# ---------------------------
+#   HuaweiTimeAccessItem
+# ---------------------------
+class HuaweiTimeControlItemDay:
+    def __init__(
+        self, day_of_week: DayOfWeek, is_enabled: bool, start: time, end: time
+    ):
+        """Initialize."""
+        self._day_of_week = day_of_week
+        self._is_enabled = is_enabled
+        self._start = start
+        self._end = end
+
+    @property
+    def day_of_week(self) -> DayOfWeek:
+        """Return the day of week."""
+        return self._day_of_week
+
+    @property
+    def is_enabled(self) -> bool:
+        """Return the state of the day."""
+        return self._is_enabled
+
+    @property
+    def start(self) -> time:
+        """Return the start time at this day."""
+        return self._start
+
+    @property
+    def end(self) -> time:
+        """Return the end time at this day."""
+        return self._end
+
+
+# ---------------------------
+#   HuaweiTimeAccessItem
+# ---------------------------
+class HuaweiTimeControlItem:
+    def __init__(self, data: Dict):
+        """Initialize."""
+        self._data = data
+        self._days: dict[DayOfWeek, HuaweiTimeControlItemDay] = {}
+
+        for day_of_week in DayOfWeek:
+
+            enabled_value = self._data.get(f"{day_of_week.value}enable")
+            is_enabled: bool = isinstance(enabled_value, bool) and enabled_value
+
+            start_value = self._data.get(f"{day_of_week.value}From", "00:00")
+            start: time = datetime.strptime(start_value, "%H:%M").time()
+
+            end_value = self._data.get(f"{day_of_week.value}To", "00:00")
+            end: time = datetime.strptime(end_value, "%H:%M").time()
+
+            day: HuaweiTimeControlItemDay = HuaweiTimeControlItemDay(
+                day_of_week, is_enabled, start, end
+            )
+
+            self._days[day_of_week] = day
+
+    @property
+    def id(self) -> str:
+        """Return the state of the item."""
+        return self._data.get("ID")
+
+    @property
+    def name(self) -> str:
+        """Return the name of the item."""
+        parts = [part for part in self.id.split(".") if part]
+        last_non_empty = parts[-1] if parts else "?"
+        return f"Time limit rule {last_non_empty}"
+
+    @property
+    def enabled(self) -> bool:
+        """Return the state of the item."""
+        value = self._data.get("Enable")
+        return isinstance(value, bool) and value
+
+    @property
+    def days(self) -> dict[DayOfWeek, HuaweiTimeControlItemDay]:
+        """Return the schedule for each day."""
+        return self._days
+
+    def update(self, source: HuaweiTimeControlItem) -> None:
+        self._data = source._data
+        self._days = source._days
+
+    def set_enabled(self, enabled: bool) -> None:
+        self._data["Enable"] = enabled

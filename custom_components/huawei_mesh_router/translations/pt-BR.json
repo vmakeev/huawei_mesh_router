@@ -40,7 +40,8 @@
                     "device_tracker_zones": "Zonas específicas do roteador para dispositivos rastreados",
                     "port_mapping_switches": "Interruptores de encaminhamento de porta",
                     "url_filter_switches": "Interruptores de filtragem de sites",
-                    "event_entities": "Entidades de eventos"
+                    "event_entities": "Entidades de eventos",
+                    "time_control_switches": "Interruptores de controle de tempo de acesso"
                 },
                 "title": "Configuração do roteador mesh Huawei (2\/2)",
                 "description": "Características adicionais"

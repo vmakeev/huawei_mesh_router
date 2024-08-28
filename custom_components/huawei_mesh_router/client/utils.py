@@ -9,6 +9,7 @@ from .const import (
     URL_SWITCH_NFC,
     URL_SWITCH_WIFI_80211R,
     URL_SWITCH_WIFI_TWT,
+    URL_TIME_CONTROL,
     URL_URL_FILTER,
     URL_WLAN_FILTER,
 )
@@ -110,6 +111,12 @@ class HuaweiFeaturesDetector:
         data = await self._core_api.get(URL_PORT_MAPPING)
         return data is not None
 
+    @log_feature(Feature.TIME_CONTROL)
+    @unauthorized_as_false
+    async def _is_time_control_available(self) -> bool:
+        data = await self._core_api.get(URL_TIME_CONTROL)
+        return data is not None
+
     async def update(self) -> None:
         """Update the available features list."""
         if await self._is_nfc_available():
@@ -135,6 +142,9 @@ class HuaweiFeaturesDetector:
 
         if await self._is_port_mapping_available():
             self._available_features.add(Feature.PORT_MAPPING)
+
+        if await self._is_time_control_available():
+            self._available_features.add(Feature.TIME_CONTROL)
 
     def is_available(self, feature: Feature) -> bool:
         """Return true if feature is available."""

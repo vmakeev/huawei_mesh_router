@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_registry import EntityRegistry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .classes import ConnectedDevice, EmulatedSwitch
-from .client.classes import MAC_ADDR, Feature, Switch
+from .client.classes import MAC_ADDR, Feature, Switch, HuaweiTimeControlItem
 from .const import DOMAIN
 from .helpers import (
     generate_entity_id,
@@ -30,6 +30,7 @@ from .update_coordinator import (
     ClientWirelessDevicesWatcher,
     HuaweiDataUpdateCoordinator,
     HuaweiPortMappingsWatcher,
+    HuaweiTimeControlItemsWatcher,
     HuaweiUrlFiltersWatcher,
     PortMapping,
     UrlFilter,
@@ -60,6 +61,9 @@ _FUNCTION_ID_PORT_MAPPING: Final = "switch_port_mapping"
 
 _FUNCTION_DISPLAYED_NAME_GUEST_NETWORK: Final = "Guest network"
 _FUNCTION_ID_GUEST_NETWORK: Final = "switch_guest_network"
+
+_FUNCTION_DISPLAYED_NAME_TIME_CONTROL: Final = "Time control"
+_FUNCTION_ID_TIME_CONTROL: Final = "switch_time_control"
 
 ENTITY_DOMAIN: Final = "switch"
 
@@ -100,6 +104,24 @@ async def _add_access_switch_if_available(
             known_access_switches[mac] = entity
     else:
         _LOGGER.debug("Feature '%s' is not supported", Feature.WLAN_FILTER)
+
+
+# ---------------------------
+#   _add_time_control_switch_if_available
+# ---------------------------
+async def _add_time_control_switch_if_available(
+    coordinator: HuaweiDataUpdateCoordinator,
+    known_time_control_switches: dict[MAC_ADDR, HuaweiSwitch],
+    time_control: HuaweiTimeControlItem,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    if await coordinator.is_feature_available(Feature.TIME_CONTROL):
+        if not known_time_control_switches.get(time_control.id):
+            entity = HuaweiTimeControlSwitch(coordinator, time_control)
+            async_add_entities([entity])
+            known_time_control_switches[time_control.id] = entity
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", Feature.TIME_CONTROL)
 
 
 # ---------------------------
@@ -181,8 +203,10 @@ async def async_setup_entry(
     async_add_entities(switches)
 
     watch_for_additional_routers(coordinator, config_entry, async_add_entities)
+    watch_for_wireless_devices(coordinator, config_entry, async_add_entities)
     watch_for_url_filters(coordinator, config_entry, async_add_entities)
     watch_for_port_mappings(coordinator, config_entry, async_add_entities)
+    watch_for_time_control_items(coordinator, config_entry, async_add_entities)
 
 
 # ---------------------------
@@ -196,9 +220,6 @@ def watch_for_additional_routers(
     router_watcher: ActiveRoutersWatcher = ActiveRoutersWatcher(coordinator)
     known_nfc_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
 
-    integration_options = HuaweiIntegrationOptions(config_entry)
-    is_wifi_switches_enabled = integration_options.wifi_access_switches
-
     @callback
     def on_router_added(device_mac: MAC_ADDR, router: ConnectedDevice) -> None:
         """When a new mesh router is detected."""
@@ -208,11 +229,26 @@ def watch_for_additional_routers(
             )
         )
 
-    if is_wifi_switches_enabled:
-        device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher(
-            coordinator
-        )
-        known_access_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
+    @callback
+    def coordinator_updated() -> None:
+        """Update the status of the device."""
+        router_watcher.look_for_changes(on_router_added)
+
+    config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
+    coordinator_updated()
+
+
+# ---------------------------
+#   watch_for_wireless_devices
+# ---------------------------
+def watch_for_wireless_devices(coordinator, config_entry, async_add_entities):
+    integration_options = HuaweiIntegrationOptions(config_entry)
+    is_wifi_switches_enabled = integration_options.wifi_access_switches
+
+    known_access_switches: dict[MAC_ADDR, HuaweiSwitch] = {}
+    device_watcher: ClientWirelessDevicesWatcher = ClientWirelessDevicesWatcher(
+        coordinator
+    )
 
     @callback
     def on_wireless_device_added(device_mac: MAC_ADDR, device: ConnectedDevice) -> None:
@@ -230,12 +266,14 @@ def watch_for_additional_routers(
     @callback
     def coordinator_updated() -> None:
         """Update the status of the device."""
-        router_watcher.look_for_changes(on_router_added)
         if is_wifi_switches_enabled:
             device_watcher.look_for_changes(on_wireless_device_added)
 
-    config_entry.async_on_unload(coordinator.async_add_listener(coordinator_updated))
-    coordinator_updated()
+    if is_wifi_switches_enabled:
+        config_entry.async_on_unload(
+            coordinator.async_add_listener(coordinator_updated)
+        )
+        coordinator_updated()
 
 
 # ---------------------------
@@ -344,6 +382,66 @@ def watch_for_port_mappings(coordinator, config_entry, async_add_entities):
             )
 
     if is_port_mapping_switches_enabled:
+        config_entry.async_on_unload(
+            coordinator.async_add_listener(coordinator_updated)
+        )
+        coordinator_updated()
+
+
+# ---------------------------
+#   watch_for_time_control_items
+# ---------------------------
+def watch_for_time_control_items(coordinator, config_entry, async_add_entities):
+    integration_options = HuaweiIntegrationOptions(config_entry)
+    is_time_control_switches_enabled = integration_options.time_control_switches
+
+    known_time_control_switches: dict[str, HuaweiSwitch] = {}
+    time_controls_watcher: HuaweiTimeControlItemsWatcher = (
+        HuaweiTimeControlItemsWatcher(coordinator)
+    )
+
+    @callback
+    def on_time_control_added(
+        time_control_id: str, time_control: HuaweiTimeControlItem
+    ) -> None:
+        """When a new time control is found."""
+        coordinator.hass.async_create_task(
+            _add_time_control_switch_if_available(
+                coordinator,
+                known_time_control_switches,
+                time_control,
+                async_add_entities,
+            )
+        )
+
+    @callback
+    def on_time_control_removed(
+        er: EntityRegistry, time_control_id: str, time_control: HuaweiTimeControlItem
+    ) -> None:
+        """When a known port mapping removed."""
+        unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_TIME_CONTROL, time_control_id
+        )
+        entity_id = er.async_get_entity_id(Platform.SWITCH, DOMAIN, unique_id)
+        if entity_id:
+            er.async_remove(entity_id)
+            if time_control_id in known_time_control_switches:
+                del known_time_control_switches[time_control_id]
+        else:
+            _LOGGER.warning(
+                "Can not remove unavailable switch '%s': entity id not found.",
+                unique_id,
+            )
+
+    @callback
+    def coordinator_updated() -> None:
+        """Update the status of the device."""
+        if is_time_control_switches_enabled:
+            time_controls_watcher.look_for_changes(
+                on_time_control_added, on_time_control_removed
+            )
+
+    if is_time_control_switches_enabled:
         config_entry.async_on_unload(
             coordinator.async_add_listener(coordinator_updated)
         )
@@ -695,6 +793,58 @@ class HuaweiPortMappingSwitch(HuaweiSwitch):
         self._attr_extra_state_attributes["host_name"] = self._port_mapping.host_name
         self._attr_extra_state_attributes["host_ip"] = self._port_mapping.host_ip
         self._attr_extra_state_attributes["host_mac"] = self._port_mapping.host_mac
+
+        super()._handle_coordinator_update()
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.is_router_online() and self.is_on is not None
+
+
+# ---------------------------
+#   HuaweiTimeControlSwitch
+# ---------------------------
+class HuaweiTimeControlSwitch(HuaweiSwitch):
+    def __init__(
+        self,
+        coordinator: HuaweiDataUpdateCoordinator,
+        time_control: HuaweiTimeControlItem,
+    ) -> None:
+        """Initialize."""
+        self._time_control = time_control
+        self._attr_extra_state_attributes = {}
+        super().__init__(
+            coordinator, EmulatedSwitch.TIME_CONTROL, switch_id=time_control.id
+        )
+        self._attr_device_info = None
+
+        self._attr_name = (
+            f"{_FUNCTION_DISPLAYED_NAME_TIME_CONTROL}: {time_control.name}"
+        )
+
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_ID_TIME_CONTROL, time_control.id
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_TIME_CONTROL,
+            time_control.name,
+        )
+        self._attr_icon = "mdi:timer-lock-outline"
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+
+        debug_data = f"Id: {self._time_control.id}, name: {self._time_control.name}, enabled: {self._time_control.enabled}"
+
+        _LOGGER.debug("Switch %s: info is %s", self._switch_id, debug_data)
+
+        self._attr_name = (
+            f"{_FUNCTION_DISPLAYED_NAME_TIME_CONTROL}: {self._time_control.name}"
+        )
 
         super()._handle_coordinator_update()
 

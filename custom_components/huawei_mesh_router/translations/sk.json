@@ -40,7 +40,8 @@
                     "device_tracker_zones": "Zóny špecifické pre smerovač pre sledované zariadenia",
                     "port_mapping_switches": "Prepínače pre presmerovanie portov",
                     "url_filter_switches": "Prepínače filtrovania webových stránok",
-                    "event_entities": "Subjekty udalostí"
+                    "event_entities": "Subjekty udalostí",
+                    "time_control_switches": "Prepínače riadenia času prístupu"
                 },
                 "title": "Huawei mesh router nastavenie (2\/2)",
                 "description": "Pridané vlastnosti"

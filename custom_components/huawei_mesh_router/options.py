@@ -11,6 +11,7 @@ from .const import (
     DEFAULT_ROUTER_CLIENTS_SENSORS,
     DEFAULT_EVENT_ENTITIES,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TIME_CONTROL_SWITCHES,
     DEFAULT_URL_FILTER_SWITCHES,
     DEFAULT_WIFI_ACCESS_SWITCHES,
     OPT_DEVICE_TRACKER,
@@ -19,6 +20,7 @@ from .const import (
     OPT_EVENT_ENTITIES,
     OPT_PORT_MAPPING_SWITCHES,
     OPT_ROUTER_CLIENTS_SENSORS,
+    OPT_TIME_CONTROL_SWITCHES,
     OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
 )
@@ -102,4 +104,13 @@ class HuaweiIntegrationOptions:
             self._config_entry,
             OPT_EVENT_ENTITIES,
             DEFAULT_EVENT_ENTITIES,
+        )
+
+    @property
+    def time_control_switches(self) -> bool:
+        """Return option 'time control switches' value"""
+        return get_option(
+            self._config_entry,
+            OPT_TIME_CONTROL_SWITCHES,
+            DEFAULT_TIME_CONTROL_SWITCHES,
         )
