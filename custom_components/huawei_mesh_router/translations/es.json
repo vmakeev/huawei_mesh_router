@@ -40,7 +40,8 @@
                     "device_tracker_zones": "Zonas para rastrear dispositivos por router",
                     "port_mapping_switches": "Switches para mapeo de puertos",
                     "url_filter_switches": "Switches para filtrado de Sitios Web",
-                    "event_entities": "Entidades de eventos"
+                    "event_entities": "Entidades de eventos",                    
+                    "time_control_switches": "Switches de control de tiempo de acceso"
                 },
                 "title": "Configuración del WiFi Mesh de Huawei (2\/2)",
                 "description": "Características Adicionales"

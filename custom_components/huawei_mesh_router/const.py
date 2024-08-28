@@ -20,6 +20,7 @@ OPT_DEVICES_TAGS = "devices_tags"
 OPT_DEVICE_TRACKER = "device_tracker"
 OPT_DEVICE_TRACKER_ZONES = "device_tracker_zones"
 OPT_EVENT_ENTITIES = "event_entities"
+OPT_TIME_CONTROL_SWITCHES = "time_control_switches"
 
 DEFAULT_HOST: Final = "192.168.3.1"
 DEFAULT_USER: Final = "admin"
@@ -37,6 +38,7 @@ DEFAULT_DEVICE_TRACKER_ZONES: Final = False
 DEFAULT_URL_FILTER_SWITCHES: Final = False
 DEFAULT_PORT_MAPPING_SWITCHES: Final = False
 DEFAULT_EVENT_ENTITIES: Final = False
+DEFAULT_TIME_CONTROL_SWITCHES: Final = False
 
 ATTR_MANUFACTURER: Final = "Huawei"
 PLATFORMS: Final = [

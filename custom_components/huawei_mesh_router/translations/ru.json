@@ -33,14 +33,15 @@
             },
             "features_select": {
                 "data": {
-                    "wifi_access_switches": "Выключатели доступа клиентских устройств",
+                    "wifi_access_switches": "Выключатели доступа к Wi-Fi",
                     "router_clients_sensors": "Сенсоры количества подключенных клиентов к отдельным роутерам",
                     "devices_tags": "Теги клиентских устройств",
                     "device_tracker": "Отслеживание устройств",
                     "device_tracker_zones": "Отдельные зоны для роутеров при отслеживании устройств",
                     "port_mapping_switches": "Выключатели переадресации портов",
                     "url_filter_switches": "Выключатели фильтров web-сайтов",
-                    "event_entities": "Объекты для событий"
+                    "event_entities": "Объекты для событий",
+                    "time_control_switches": "Выключатели контроля времени доступа"
                 },
                 "title": "Настройка интеграции mesh маршрутизатора Huawei (2\/2)",
                 "description": "Расширенная функциональность"

@@ -48,6 +48,7 @@ from .client.classes import (
     HuaweiDeviceNode,
     HuaweiFilterInfo,
     HuaweiRouterInfo,
+    HuaweiTimeControlItem,
     HuaweiUrlFilterInfo,
     Switch,
 )
@@ -97,6 +98,40 @@ class HuaweiUrlFiltersWatcher(HuaweiChangesWatcher[str, UrlFilter]):
         self,
         on_added: Callable[[str, UrlFilter], None] | None = None,
         on_removed: Callable[[EntityRegistry, str, UrlFilter], None] | None = None,
+    ) -> None:
+        """Look for difference between previously known and current lists of items."""
+        added, removed = self._get_difference(self._coordinator.hass)
+
+        if on_added:
+            for key, item in added:
+                on_added(key, item)
+
+        if on_removed:
+            for er, key, item in removed:
+                on_removed(er, key, item)
+
+
+# ---------------------------
+#   HuaweiTimeControlItemsWatcher
+# ---------------------------
+class HuaweiTimeControlItemsWatcher(HuaweiChangesWatcher[str, HuaweiTimeControlItem]):
+    def _get_actual_items(self) -> Iterable[_TItem]:
+        return self._coordinator.time_control_items.values()
+
+    def _get_key(self, item: _TItem) -> _TKey:
+        return item.id
+
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
+        """Initialize."""
+        self._coordinator = coordinator
+        super().__init__(lambda item: True)
+
+    def look_for_changes(
+        self,
+        on_added: Callable[[str, HuaweiTimeControlItem], None] | None = None,
+        on_removed: (
+            Callable[[EntityRegistry, str, HuaweiTimeControlItem], None] | None
+        ) = None,
     ) -> None:
         """Look for difference between previously known and current lists of items."""
         added, removed = self._get_difference(self._coordinator.hass)
@@ -201,7 +236,10 @@ class ClientWirelessDevicesWatcher(HuaweiConnectedDevicesWatcher):
     def filter(device: ConnectedDevice) -> bool:
         if device.is_router:
             return False
-        return device.interface_type != HuaweiInterfaceType.INTERFACE_LAN
+        return device.interface_type in [
+            HuaweiInterfaceType.INTERFACE_2_4GHZ,
+            HuaweiInterfaceType.INTERFACE_5GHZ,
+        ]
 
     def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
         """Initialize."""
@@ -303,6 +341,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         self._select_states: dict[Select | str, str] = {}
         self._wlan_filter_info: HuaweiFilterInfo | None = None
         self._url_filters: dict[str, UrlFilter] = {}
+        self._time_control_items: dict[str, HuaweiTimeControlItem] = {}
         self._port_mappings: dict[str, PortMapping] = {}
 
         super().__init__(
@@ -349,8 +388,13 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         return self._url_filters
 
     @property
+    def time_control_items(self) -> dict[str, HuaweiTimeControlItem]:
+        """Return the time control items."""
+        return self._time_control_items
+
+    @property
     def port_mappings(self) -> dict[str, PortMapping]:
-        """Return the url filters."""
+        """Return the port mappings."""
         return self._port_mappings
 
     @property
@@ -449,10 +493,46 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         await self._update_wan_info()
         await self._update_url_filter_info()
         await self._update_port_mappings()
+        await self._update_time_control()
         await self._update_switches()
         await self._update_selects()
         self._logger.debug("Update completed")
         self._is_initial_update = False
+
+    @suppress_update_exception("Can not update time control items %s")
+    async def _update_time_control(self) -> None:
+
+        if not self._integration_options.time_control_switches:
+            return
+
+        if not await self.primary_router_api.is_feature_available(Feature.TIME_CONTROL):
+            return
+
+        self._logger.debug("Updating time control items")
+
+        time_control_items: dict[str, HuaweiTimeControlItem] = {
+            item.id: item
+            for item in await self.primary_router_api.get_time_control_items()
+        }
+
+        missing_item_ids: list[str] = []
+        for existing_item in self._time_control_items.values():
+            updated_item = time_control_items.get(existing_item.id)
+            if not updated_item:
+                missing_item_ids.append(existing_item.id)
+                continue
+
+            existing_item.update(updated_item)
+
+        if missing_item_ids:
+            for missing_id in missing_item_ids:
+                del self._time_control_items[missing_id]
+
+        for updated_item in time_control_items.values():
+            if updated_item.id not in self._time_control_items:
+                self._time_control_items[updated_item.id] = updated_item
+
+        self._logger.debug("Time control items updated")
 
     @suppress_update_exception("Can not update port mappings %s")
     async def _update_port_mappings(self) -> None:
@@ -755,6 +835,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
         await self.calculate_device_access_switch_states(new_states)
         await self.calculate_url_filter_switch_states(new_states)
         await self.calculate_port_mapping_switches(new_states)
+        await self.calculate_time_control_switch_states(new_states)
 
         self._switch_states = new_states
         self._logger.debug("Switches states updated")
@@ -817,6 +898,24 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 self._logger.debug(
                     "URL filter switch (%s) state updated to %s",
                     item.filter_id,
+                    item.enabled,
+                )
+
+    async def calculate_time_control_switch_states(
+        self, states: dict[Switch | EmulatedSwitch | str, bool] | None = None
+    ) -> None:
+        """Update time control switch states."""
+        if not self._integration_options.time_control_switches:
+            return
+
+        states = states or self._switch_states
+
+        if await self.primary_router_api.is_feature_available(Feature.TIME_CONTROL):
+            for item in self._time_control_items.values():
+                states[f"{EmulatedSwitch.TIME_CONTROL}_{item.id}"] = item.enabled
+                self._logger.debug(
+                    "Time control switch (%s) state updated to %s",
+                    item.id,
                     item.enabled,
                 )
 
@@ -909,7 +1008,8 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
             host_name: str = device_data.host_name or f"device_{mac}"
             name: str = device_data.actual_name or host_name
             is_active: bool = device_data.is_active
-            filter_mode = devices_to_filters.get(mac)
+            filter_mode: HuaweiWlanFilterMode = devices_to_filters.get(mac)
+            interface_type: HuaweiInterfaceType = device_data.interface_type
 
             # if nothing is found in the devices_to_routers, then the device is connected to the primary router
             connected_via = devices_to_routers.get(
@@ -927,7 +1027,14 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                 device = self._connected_devices[mac]
             else:
                 device = ConnectedDevice(
-                    name, host_name, mac, is_active, tags, filter_mode
+                    name,
+                    host_name,
+                    mac,
+                    is_active,
+                    tags,
+                    filter_mode,
+                    interface_type=interface_type,
+                    is_router=device_data.is_router,
                 )
                 self._connected_devices[device.mac] = device
                 # new device = fire an event immediately
@@ -1011,7 +1118,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     filter_mode,
                     connected_via=connected_via.get("name"),
                     ip_address=ip_address,
-                    interface_type=device_data.interface_type,
+                    interface_type=interface_type,
                     rssi=device_data.rssi,
                     is_guest=device_data.is_guest,
                     is_hilink=device_data.is_hilink,
@@ -1026,7 +1133,18 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     download_rate=get_readable_rate(device_data.download_rate),
                 )
             else:
-                device.update_device_data(name, host_name, False, tags, filter_mode)
+                device.update_device_data(
+                    name,
+                    host_name,
+                    False,
+                    tags,
+                    filter_mode,
+                    ip_address=ip_address,
+                    interface_type=interface_type,
+                    is_guest=device_data.is_guest,
+                    is_hilink=device_data.is_hilink,
+                    is_router=device_data.is_router,
+                )
 
         self._logger.debug("Connected devices updated")
 
@@ -1117,6 +1235,22 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
 
             await self.primary_router_api.set_port_mapping_state(
                 port_mapping.id, port_mapping.enabled
+            )
+
+        # Time control switch processing
+        elif switch == EmulatedSwitch.TIME_CONTROL:
+            if not switch_id:
+                raise CoordinatorError(
+                    f"Can not set value: switch_id is required for {EmulatedSwitch.TIME_CONTROL}"
+                )
+            time_control = self._time_control_items.get(switch_id)
+            if time_control.enabled == state:
+                return
+
+            time_control.set_enabled(state)
+
+            await self.primary_router_api.set_time_control_item_state(
+                time_control.id, time_control.enabled
             )
 
         # other switches

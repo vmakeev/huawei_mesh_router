@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_ROUTER_CLIENTS_SENSORS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SSL,
+    DEFAULT_TIME_CONTROL_SWITCHES,
     DEFAULT_URL_FILTER_SWITCHES,
     DEFAULT_USER,
     DEFAULT_VERIFY_SSL,
@@ -43,6 +44,7 @@ from .const import (
     OPT_EVENT_ENTITIES,
     OPT_PORT_MAPPING_SWITCHES,
     OPT_ROUTER_CLIENTS_SENSORS,
+    OPT_TIME_CONTROL_SWITCHES,
     OPT_URL_FILTER_SWITCHES,
     OPT_WIFI_ACCESS_SWITCHES,
 )
@@ -249,6 +251,12 @@ class HuaweiControllerOptionsFlowHandler(OptionsFlow):
                         OPT_PORT_MAPPING_SWITCHES,
                         default=self.options.get(
                             OPT_PORT_MAPPING_SWITCHES, DEFAULT_PORT_MAPPING_SWITCHES
+                        ),
+                    ): bool,
+                    vol.Required(
+                        OPT_TIME_CONTROL_SWITCHES,
+                        default=self.options.get(
+                            OPT_TIME_CONTROL_SWITCHES, DEFAULT_TIME_CONTROL_SWITCHES
                         ),
                     ): bool,
                 },

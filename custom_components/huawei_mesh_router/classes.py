@@ -35,6 +35,7 @@ class EmulatedSwitch(StrEnum):
     DEVICE_ACCESS = "wlan_device_access_switch"
     URL_FILTER = "url_filter_switch"
     PORT_MAPPING = "port_mapping"
+    TIME_CONTROL = "time_control"
 
 
 # ---------------------------

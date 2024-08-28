@@ -22,6 +22,7 @@ from .classes import (
     HuaweiPortMappingItem,
     HuaweiRouterInfo,
     HuaweiRsaPublicKey,
+    HuaweiTimeControlItem,
     HuaweiUrlFilterInfo,
     Switch,
 )
@@ -36,6 +37,7 @@ from .const import (
     URL_SWITCH_NFC,
     URL_SWITCH_WIFI_80211R,
     URL_SWITCH_WIFI_TWT,
+    URL_TIME_CONTROL,
     URL_URL_FILTER,
     URL_WANDETECT,
     URL_WLAN_FILTER,
@@ -719,7 +721,7 @@ class HuaweiApi:
         )
 
         if not target:
-            raise InvalidActionError(f"Unknown filter: {port_mapping_id}")
+            raise InvalidActionError(f"Unknown port mapping: {port_mapping_id}")
 
         target["Enable"] = enabled
 
@@ -753,4 +755,31 @@ class HuaweiApi:
             duration=primary_item.valid_time,
             secure=primary_item.sec_opt != WIFI_SECURITY_OPEN,
             password=primary_item.key,
+        )
+
+    async def get_time_control_items(self) -> Iterable[HuaweiTimeControlItem]:
+        data = await self._core_api.get(URL_TIME_CONTROL)
+        return [HuaweiTimeControlItem(item) for item in data]
+
+    async def set_time_control_item_state(
+        self, time_control_item_id: str, enabled: bool
+    ) -> None:
+        time_control_items = await self._core_api.get(URL_TIME_CONTROL)
+        target = next(
+            (
+                item
+                for item in time_control_items
+                if item.get("ID") == time_control_item_id
+            )
+        )
+
+        if not target:
+            raise InvalidActionError(
+                f"Unknown time control item: {time_control_item_id}"
+            )
+
+        target["Enable"] = enabled
+
+        await self._core_api.post(
+            URL_TIME_CONTROL, target, extra_data={"action": "update"}
         )
