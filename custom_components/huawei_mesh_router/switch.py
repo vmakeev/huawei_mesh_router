@@ -846,6 +846,30 @@ class HuaweiTimeControlSwitch(HuaweiSwitch):
             f"{_FUNCTION_DISPLAYED_NAME_TIME_CONTROL}: {self._time_control.name}"
         )
 
+        for day in self._time_control.days.values():
+            self._attr_extra_state_attributes[day.day_of_week.value.lower()] = (
+                {
+                    "is_enabled": day.is_enabled,
+                    "start_time": day.start,
+                    "end_time": day.end,
+                }
+                if day.is_enabled
+                else {"is_enabled": day.is_enabled}
+            )
+
+        if self.coordinator.connected_devices:
+            device_index = 1
+            for device_mac in self._time_control.devices_mac:
+                device: ConnectedDevice = self.coordinator.connected_devices.get(
+                    device_mac
+                )
+                if device:
+                    self._attr_extra_state_attributes[f"device_{device_index}"] = {
+                        "mac": device.mac,
+                        "name": device.name,
+                    }
+                    device_index += 1
+
         super()._handle_coordinator_update()
 
     @property

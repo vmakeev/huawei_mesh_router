@@ -38,6 +38,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 - control of the Fast Roaming function (802.11r)
 - control of the Target Wake Time (reduce power consumption of Wi-Fi 6 devices in sleep mode)
 - port mapping switches
+- Internet access time control switches
 - reboot buttons
 - events for connecting, disconnecting, or moving devices over a mesh network
 - automatic detection of available functions
@@ -153,6 +154,7 @@ You can attach one or more tags to each client device in order to be able to use
 * Website filtering ([read more](docs/controls.md#website-filtering))
 * Guest network ([read more](docs/controls.md#guest-network))
 * Port mapping ([read more](docs/controls.md#port-mapping))
+* Internet access time ([read more](docs/controls.md#internet-access-time))
 
 ### Selects
 * Wi-Fi access control mode ([read more](docs/controls.md#wi-fi-access-control-mode))
