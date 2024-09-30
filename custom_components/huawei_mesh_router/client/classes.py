@@ -472,15 +472,41 @@ class HuaweiTimeControlItem:
     @property
     def name(self) -> str:
         """Return the name of the item."""
-        parts = [part for part in self.id.split(".") if part]
-        last_non_empty = parts[-1] if parts else "?"
-        return f"Time limit rule {last_non_empty}"
+        device_names = [
+            item.get("HostName", "device") for item in self._data.get("DeviceNames", [])
+        ]
+        days = [
+            active_day.day_of_week.value
+            for active_day in filter(lambda x: x.is_enabled, self._days.values())
+        ]
+
+        device_names_str = (
+            "for " + ", ".join(device_names)
+            if len(device_names) > 0
+            else "for some devices"
+        )
+
+        if len(days) == 7:
+            days_str = "for every day"
+        elif days == ["Saturday", "Sunday"]:
+            days_str = "on weekends"
+        elif days == ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+            days_str = "on working days"
+        else:
+            days_str = "on " + ", ".join(days)
+
+        return f"Time limit rule {device_names_str} {days_str}"
 
     @property
     def enabled(self) -> bool:
         """Return the state of the item."""
         value = self._data.get("Enable")
         return isinstance(value, bool) and value
+
+    @property
+    def devices_mac(self) -> Iterable[MAC_ADDR]:
+        """Return the state of the item."""
+        return [device.get("MACAddress", "no_mac_addr") for device in self._data.get("Devices", [])]
 
     @property
     def days(self) -> dict[DayOfWeek, HuaweiTimeControlItemDay]:
