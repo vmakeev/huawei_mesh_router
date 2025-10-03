@@ -319,7 +319,7 @@ async def async_setup_services(hass: HomeAssistant, config_entry: ConfigEntry) -
         )
         return
 
-    @verify_domain_control(hass, DOMAIN)
+    @verify_domain_control(DOMAIN)
     async def async_call_service(service: ServiceCall) -> None:
         service_name = service.service
 
