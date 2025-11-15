@@ -41,6 +41,7 @@ from .const import (
     URL_URL_FILTER,
     URL_WANDETECT,
     URL_WLAN_FILTER,
+    URL_WLAN_RADIO,
     URL_WAN_INFO,
     WIFI_SECURITY_ENCRYPTED,
     WIFI_SECURITY_OPEN,
@@ -208,6 +209,18 @@ class HuaweiApi:
                 data_5g is not None and data_5g.enabled
             )
 
+        elif switch == Switch.WIFI_2_4_GHZ and self._features.is_available(
+            Feature.WIFI_2_4_GHZ
+        ):
+            data = await self.get_wlan_radio_info()
+            return data.get("Enable2G", False)
+
+        elif switch == Switch.WIFI_5_GHZ and self._features.is_available(
+            Feature.WIFI_5_GHZ
+        ):
+            data = await self.get_wlan_radio_info()
+            return data.get("Enable5G", False)
+
         else:
             raise UnsupportedActionError(f"Unsupported switch: {switch}")
 
@@ -245,6 +258,16 @@ class HuaweiApi:
             Feature.GUEST_NETWORK
         ):
             await self._set_guest_network_enabled(state)
+
+        elif switch == Switch.WIFI_2_4_GHZ and self._features.is_available(
+            Feature.WIFI_2_4_GHZ
+        ):
+            await self.set_wlan_radio_band_state("2.4GHz", state)
+
+        elif switch == Switch.WIFI_5_GHZ and self._features.is_available(
+            Feature.WIFI_5_GHZ
+        ):
+            await self.set_wlan_radio_band_state("5GHz", state)
 
         else:
             raise UnsupportedActionError(f"Unsupported switch: {switch}")
@@ -783,3 +806,35 @@ class HuaweiApi:
         await self._core_api.post(
             URL_TIME_CONTROL, target, extra_data={"action": "update"}
         )
+
+    @staticmethod
+    def _to_wlan_radio_config(source: dict[str, Any]) -> dict[str, Any]:
+        """Parse WLAN radio configuration from API response."""
+        return {
+            "Enable2G": source.get("Enable2G", False),
+            "Enable5G": source.get("Enable5G", False),
+            "PowerMode": source.get("PowerMode"),
+            "InitEnable2G": source.get("InitEnable2G"),
+            "InitEnable5G": source.get("InitEnable5G"),
+            "WLANMode": source.get("WLANMode"),
+        }
+
+    async def get_wlan_radio_info(self) -> dict[str, Any]:
+        """Get WiFi band configuration."""
+        data = await self._core_api.get(URL_WLAN_RADIO)
+        return self._to_wlan_radio_config(data)
+
+    async def set_wlan_radio_band_state(self, band: str, enabled: bool) -> None:
+        """Set WiFi band state (2.4GHz or 5GHz)."""
+        current_state = await self.get_wlan_radio_info()
+
+        # Update the appropriate band state
+        if band == "2.4GHz":
+            current_state["Enable2G"] = enabled
+        elif band == "5GHz":
+            current_state["Enable5G"] = enabled
+        else:
+            raise InvalidActionError(f"Unknown WiFi band: {band}")
+
+        # Post complete configuration back to router
+        await self._core_api.post(URL_WLAN_RADIO, current_state)
