@@ -1,0 +1,138 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "华为Mesh路由器配置。",
+                "data": {
+                    "name": "集成名称",
+                    "host": "主机地址",
+                    "port": "端口",
+                    "username": "用户名",
+                    "password": "密码",
+                    "ssl": "使用SSL",
+                    "verify_ssl": "验证SSL证书"
+                }
+            }
+        },
+        "error": {
+            "name_exists": "此名称已被使用。",
+            "auth_general": "无法验证。",
+            "auth_invalid_csrf": "CSRF错误，请重试。",
+            "auth_too_many_users": "用户数量过多，请稍后重试。",
+            "auth_invalid_credentials": "用户名或密码无效。"
+        }
+    },
+    "options": {
+        "step": {
+            "basic_options": {
+                "data": {
+                    "scan_interval": "更新间隔"
+                },
+                "title": "华为Mesh路由器配置（1/2）",
+                "description": "基本选项"
+            },
+            "features_select": {
+                "data": {
+                    "wifi_access_switches": "设备Wi-Fi访问开关",
+                    "router_clients_sensors": "展示每个路由器连接的设备数量",
+                    "devices_tags": "设备标签",
+                    "device_tracker": "设备追踪",
+                    "device_tracker_zones": "配置设备追踪的路由器区域",
+                    "port_mapping_switches": "端口转发开关",
+                    "url_filter_switches": "网站过滤开关",
+                    "event_entities": "事件实体",
+                    "time_control_switches": "访问时间控制开关"
+                },
+                "title": "华为Mesh路由器配置（2/2）",
+                "description": "额外功能"
+            }
+        }
+    },
+    "services": {
+        "whitelist_add": {
+            "name": "添加到白名单",
+            "description": "将指定设备添加到路由器的Wi-Fi白名单。",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC地址",
+                    "description": "无线连接设备的MAC地址。"
+                }
+            }
+        },
+        "blacklist_add": {
+            "name": "添加到黑名单",
+            "description": "将指定设备添加到路由器的Wi-Fi黑名单。",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC地址",
+                    "description": "无线连接设备的MAC地址。"
+                }
+            }
+        },
+        "whitelist_remove": {
+            "name": "从白名单移除",
+            "description": "将指定设备从路由器的Wi-Fi白名单中移除。",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC地址",
+                    "description": "无线连接设备的MAC地址。"
+                }
+            }
+        },
+        "blacklist_remove": {
+            "name": "从黑名单移除",
+            "description": "将指定设备从路由器的Wi-Fi黑名单中移除。",
+            "fields": {
+                "mac_address": {
+                    "name": "MAC地址",
+                    "description": "无线连接设备的MAC地址。"
+                }
+            }
+        },
+        "guest_network_setup": {
+            "name": "设置访客网络",
+            "description": "配置访客Wi-Fi网络的参数。",
+            "fields": {
+                "serial_number": {
+                    "name": "主路由设备序列号",
+                    "description": "主路由的设备序列号。"
+                },
+                "enabled": {
+                    "name": "启用访客网络",
+                    "description": "启用或禁用访客Wi-Fi网络。"
+                },
+                "ssid": {
+                    "name": "访客Wi-Fi名称",
+                    "description": "访客Wi-Fi网络的名称。"
+                },
+                "duration": {
+                    "name": "访问持续时间",
+                    "description": "访客Wi-Fi网络访问的持续时间。"
+                },
+                "security": {
+                    "name": "安全",
+                    "description": "访客Wi-Fi网络的安全设置。"
+                },
+                "password": {
+                    "name": "Wi-Fi密码",
+                    "description": "访问访客Wi-Fi网络的密码。"
+                }
+            }
+        }
+    },
+    "selector": {
+        "wifi_duration": {
+            "options": {
+                "four_hours": "4小时",
+                "one_day": "1天",
+                "unlimited": "无限制"
+            }
+        },
+        "wifi_security": {
+            "options": {
+                "encrypted": "加密",
+                "open": "开放"
+            }
+        }
+    }
+}
