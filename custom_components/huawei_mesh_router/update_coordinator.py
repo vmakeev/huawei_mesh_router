@@ -825,6 +825,16 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
             new_states[Switch.GUEST_NETWORK] = state
             self._logger.debug("Guest network switch state updated to %s", state)
 
+        if await primary_api.is_feature_available(Feature.WIFI_2_4_GHZ):
+            state = await primary_api.get_switch_state(Switch.WIFI_2_4_GHZ)
+            new_states[Switch.WIFI_2_4_GHZ] = state
+            self._logger.debug("WiFi 2.4 GHz switch state updated to %s", state)
+
+        if await primary_api.is_feature_available(Feature.WIFI_5_GHZ):
+            state = await primary_api.get_switch_state(Switch.WIFI_5_GHZ)
+            new_states[Switch.WIFI_5_GHZ] = state
+            self._logger.debug("WiFi 5 GHz switch state updated to %s", state)
+
         for mac, api in self._apis.items():
             if mac == _PRIMARY_ROUTER_IDENTITY:
                 continue
@@ -1252,6 +1262,14 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
             await self.primary_router_api.set_time_control_item_state(
                 time_control.id, time_control.enabled
             )
+
+        # WiFi 2.4 GHz switch processing
+        elif switch == Switch.WIFI_2_4_GHZ:
+            await self.primary_router_api.set_switch_state(Switch.WIFI_2_4_GHZ, state)
+
+        # WiFi 5 GHz switch processing
+        elif switch == Switch.WIFI_5_GHZ:
+            await self.primary_router_api.set_switch_state(Switch.WIFI_5_GHZ, state)
 
         # other switches
         else:

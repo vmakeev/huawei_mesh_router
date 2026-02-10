@@ -12,6 +12,7 @@ from .const import (
     URL_TIME_CONTROL,
     URL_URL_FILTER,
     URL_WLAN_FILTER,
+    URL_WLAN_RADIO,
 )
 from .coreapi import APICALL_ERRCAT_UNAUTHORIZED, ApiCallError, HuaweiCoreApi
 
@@ -117,6 +118,18 @@ class HuaweiFeaturesDetector:
         data = await self._core_api.get(URL_TIME_CONTROL)
         return data is not None
 
+    @log_feature(Feature.WIFI_2_4_GHZ)
+    @unauthorized_as_false
+    async def _is_wifi_2_4_ghz_available(self) -> bool:
+        data = await self._core_api.get(URL_WLAN_RADIO)
+        return isinstance(data.get("Enable2G"), bool)
+
+    @log_feature(Feature.WIFI_5_GHZ)
+    @unauthorized_as_false
+    async def _is_wifi_5_ghz_available(self) -> bool:
+        data = await self._core_api.get(URL_WLAN_RADIO)
+        return isinstance(data.get("Enable5G"), bool)
+
     async def update(self) -> None:
         """Update the available features list."""
         if await self._is_nfc_available():
@@ -145,6 +158,12 @@ class HuaweiFeaturesDetector:
 
         if await self._is_time_control_available():
             self._available_features.add(Feature.TIME_CONTROL)
+
+        if await self._is_wifi_2_4_ghz_available():
+            self._available_features.add(Feature.WIFI_2_4_GHZ)
+
+        if await self._is_wifi_5_ghz_available():
+            self._available_features.add(Feature.WIFI_5_GHZ)
 
     def is_available(self, feature: Feature) -> bool:
         """Return true if feature is available."""

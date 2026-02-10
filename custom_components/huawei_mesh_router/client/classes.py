@@ -30,6 +30,8 @@ class Feature(StrEnum):
     GUEST_NETWORK = "feature_guest_network"
     PORT_MAPPING = "feature_port_mapping"
     TIME_CONTROL = "feature_time_control"
+    WIFI_2_4_GHZ = "feature_wifi_2_4_ghz"
+    WIFI_5_GHZ = "feature_wifi_5_ghz"
 
 
 # ---------------------------
@@ -41,6 +43,8 @@ class Switch(StrEnum):
     WIFI_TWT = "wifi_twt_switch"
     WLAN_FILTER = "wlan_filter_switch"
     GUEST_NETWORK = "guest_network_switch"
+    WIFI_2_4_GHZ = "wifi_2_4_ghz_switch"
+    WIFI_5_GHZ = "wifi_5_ghz_switch"
 
 
 # ---------------------------

@@ -65,6 +65,12 @@ _FUNCTION_ID_GUEST_NETWORK: Final = "switch_guest_network"
 _FUNCTION_DISPLAYED_NAME_TIME_CONTROL: Final = "Time control"
 _FUNCTION_ID_TIME_CONTROL: Final = "switch_time_control"
 
+_FUNCTION_DISPLAYED_NAME_WIFI_2_4_GHZ: Final = "WiFi 2.4 GHz"
+_FUNCTION_UID_WIFI_2_4_GHZ: Final = "switch_wifi_2_4_ghz"
+
+_FUNCTION_DISPLAYED_NAME_WIFI_5_GHZ: Final = "WiFi 5 GHz"
+_FUNCTION_UID_WIFI_5_GHZ: Final = "switch_wifi_5_ghz"
+
 ENTITY_DOMAIN: Final = "switch"
 
 
@@ -199,6 +205,16 @@ async def async_setup_entry(
         switches.append(HuaweiGuestNetworkSwitch(coordinator))
     else:
         _LOGGER.debug("Feature '%s' is not supported", Feature.GUEST_NETWORK)
+
+    if await coordinator.is_feature_available(Feature.WIFI_2_4_GHZ):
+        switches.append(HuaweiWifi24GhzSwitch(coordinator))
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WIFI_2_4_GHZ)
+
+    if await coordinator.is_feature_available(Feature.WIFI_5_GHZ):
+        switches.append(HuaweiWifi5GhzSwitch(coordinator))
+    else:
+        _LOGGER.debug("Feature '%s' is not supported", Feature.WIFI_5_GHZ)
 
     async_add_entities(switches)
 
@@ -651,6 +667,50 @@ class HuaweiGuestNetworkSwitch(HuaweiSwitch):
         """Perform transition to the specified state."""
         await super()._go_to_state(state)
         self.coordinator.async_update_listeners()
+
+
+# ---------------------------
+#   HuaweiWifi24GhzSwitch
+# ---------------------------
+class HuaweiWifi24GhzSwitch(HuaweiSwitch):
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator, Switch.WIFI_2_4_GHZ, None)
+
+        self._attr_name = generate_entity_name(
+            _FUNCTION_DISPLAYED_NAME_WIFI_2_4_GHZ, coordinator.primary_router_name
+        )
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_UID_WIFI_2_4_GHZ
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_WIFI_2_4_GHZ,
+        )
+        self._attr_icon = "mdi:wifi"
+
+
+# ---------------------------
+#   HuaweiWifi5GhzSwitch
+# ---------------------------
+class HuaweiWifi5GhzSwitch(HuaweiSwitch):
+    def __init__(self, coordinator: HuaweiDataUpdateCoordinator) -> None:
+        """Initialize."""
+        super().__init__(coordinator, Switch.WIFI_5_GHZ, None)
+
+        self._attr_name = generate_entity_name(
+            _FUNCTION_DISPLAYED_NAME_WIFI_5_GHZ, coordinator.primary_router_name
+        )
+        self._attr_unique_id = generate_entity_unique_id(
+            coordinator, _FUNCTION_UID_WIFI_5_GHZ
+        )
+        self.entity_id = generate_entity_id(
+            coordinator,
+            ENTITY_DOMAIN,
+            _FUNCTION_DISPLAYED_NAME_WIFI_5_GHZ,
+        )
+        self._attr_icon = "mdi:wifi-plus"
 
 
 # ---------------------------
