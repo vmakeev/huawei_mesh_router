@@ -165,7 +165,7 @@ class HuaweiControllerOptionsFlowHandler(OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._local_config_entry = config_entry
         self.options = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None) -> FlowResult:
@@ -184,9 +184,9 @@ class HuaweiControllerOptionsFlowHandler(OptionsFlow):
                 {
                     vol.Required(
                         CONF_SCAN_INTERVAL,
-                        default=self.config_entry.options.get(
+                        default=self._local_config_entry.options.get(
                             CONF_SCAN_INTERVAL,
-                            self.config_entry.data.get(
+                            self._local_config_entry.data.get(
                                 CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                             ),
                         ),

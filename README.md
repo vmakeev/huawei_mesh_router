@@ -8,7 +8,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 
 [![Release](https://img.shields.io/github/v/release/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
 [![ReleaseDate](https://img.shields.io/github/release-date/vmakeev/huawei_mesh_router)](https://github.com/vmakeev/huawei_mesh_router/releases/latest)
-![Maintained](https://img.shields.io/maintenance/yes/2025)
+![Maintained](https://img.shields.io/maintenance/yes/2026)
 
 [![Localization contribute](https://img.shields.io/badge/localization-contrubute-blue)](docs/localization.md)
 
@@ -17,6 +17,7 @@ Home Assistant custom component for control Huawei mesh routers over LAN.
 [![Brazilian Portuguese](docs/images/flags/br.png)](custom_components/huawei_mesh_router/translations/pt-BR.json)
 [![Español](docs/images/flags/es.png)](custom_components/huawei_mesh_router/translations/es.json)
 [![Slovak](docs/images/flags/sk.png)](custom_components/huawei_mesh_router/translations/sk.json)
+[![Chinese](docs/images/flags/zh.png)](custom_components/huawei_mesh_router/translations/zh-Hans.json)
 
 ## Key features
 
